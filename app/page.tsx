@@ -55,24 +55,80 @@ const projects = [
 ];
 
 const visualizations = [
+  // Physics & Quantum
   {
     title: "Bell Test: Ultimate Lab",
     label: "Interactive Quantum Experiment",
     description:
       "Explore quantum entanglement, Bell inequalities, and the CHSH test in an immersive 3D environment.",
-    link: "/bell-test"
+    link: "/bell-test.html",
+    category: "Physics"
   },
   {
-    title: "AI Architecture Diagram",
-    label: "Diagram Placeholder",
+    title: "Quantum Simulation",
+    label: "Quantum Mechanics",
     description:
-      "Replace with a high-level model diagram, attention map, or workflow sketch."
+      "Interactive quantum mechanics simulation exploring wave functions, superposition, and state evolution.",
+    link: "/quantum-simulation.html",
+    category: "Physics"
   },
   {
-    title: "FEM + PFD Pipeline",
-    label: "Simulation Placeholder",
+    title: "Physics Visualization",
+    label: "Classical & Modern Physics",
     description:
-      "Add a snapshot of your simulation pipeline or solver convergence plot."
+      "Visualize mechanics, electromagnetism, relativity, and other fundamental physics phenomena.",
+    link: "/physics-visualization.html",
+    category: "Physics"
+  },
+  // AI & Model Architecture
+  {
+    title: "AI Architecture Viz",
+    label: "Model Architecture",
+    description:
+      "Interactive visualization of AI model architecture, attention mechanisms, and neural network structures.",
+    link: "/ai-architecture-viz.html",
+    category: "AI"
+  },
+  {
+    title: "AI Model Explorer",
+    label: "Model Inspection",
+    description:
+      "Explore model parameters, layer structures, and training dynamics in real-time.",
+    link: "/ai-model-explorer.html",
+    category: "AI"
+  },
+  {
+    title: "Training Dynamics",
+    label: "Optimization Visualization",
+    description:
+      "Real-time visualization of training metrics, loss curves, and optimization landscapes.",
+    link: "/ai-training-dynamics.html",
+    category: "AI"
+  },
+  // FEM & Simulation
+  {
+    title: "FEM Mesh Viewer",
+    label: "Finite Element Analysis",
+    description:
+      "Interactive mesh visualization with element inspection, refinement zones, and quality metrics.",
+    link: "/fem-mesh-viewer.html",
+    category: "FEM"
+  },
+  {
+    title: "PFD Simulation",
+    label: "Fluid Dynamics",
+    description:
+      "Computational fluid dynamics with flow fields, pressure distributions, and velocity vectors.",
+    link: "/pfd-simulation.html",
+    category: "FEM"
+  },
+  {
+    title: "Solver Convergence",
+    label: "Iterative Solvers",
+    description:
+      "Real-time visualization of solver convergence, residual plots, and solution progress.",
+    link: "/solver-convergence.html",
+    category: "FEM"
   }
 ];
 
