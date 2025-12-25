@@ -2,81 +2,1572 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bell Test: Ultimate Lab</title>
+  <title>Bell Test: Ultimate Lab (Enhanced)</title>
   <style>
-    body {
-      margin: 0;
-      padding: 20px;
-      background-color: #111;
-      color: #fff;
-      font-family: 'Segoe UI', sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
+    body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Segoe UI', sans-serif; }
+
+    /* HUD */
+    #hud {
+      position: absolute; top: 10px; left: 10px; width: 360px;
+      background: rgba(30, 30, 35, 0.95); color: #eee;
+      padding: 15px; border-radius: 8px; border: 1px solid #555;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      display: flex; flex-direction: column; gap: 10px;
+      pointer-events: auto;
+      user-select: none;
+      max-height: 95vh; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: #444 #222;
     }
-    .container {
-      max-width: 800px;
-      text-align: center;
+
+    /* CHSH progress */
+    .progress-grid { display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+    .bar-row { display:grid; grid-template-columns: 58px 1fr 74px; gap:8px; align-items:center; }
+    .bar-label { font-size:0.72rem; color:#bbb; font-family: monospace; }
+    .bar-wrap { height:10px; background:#111; border:1px solid #333; border-radius:999px; overflow:hidden; }
+    .bar-fill { height:100%; width:0%; background:#aa66ff; transition: width 0.12s linear; }
+    .bar-text { font-size:0.72rem; color:#aaa; font-family: monospace; text-align:right; white-space:nowrap; }
+    .bar-done .bar-fill { background:#ffcc00; }
+
+    h3 {
+      margin: 0; color: #00d4ff; text-transform: uppercase;
+      letter-spacing: 2px; font-size: 1.05rem;
+      border-bottom: 1px solid #444; padding-bottom: 8px;
+      display:flex; justify-content:space-between; align-items:center;
     }
-    h1 {
-      color: #00d4ff;
-      margin-bottom: 20px;
+    .subtle { font-size: 0.72rem; color:#aaa; letter-spacing:1px; text-transform:none; }
+
+    .control-group { background: #222; padding: 10px; border-radius: 6px; border: 1px solid #444; }
+    .label-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; color: #ccc; font-weight: bold; }
+    .val { color: #fff; font-family: monospace; font-size: 1rem; }
+
+    input[type="range"] { width: 100%; cursor: pointer; accent-color: #00d4ff; }
+
+    .input-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.85rem; font-weight: bold; color:#aaa; gap: 8px;}
+    input[type="number"], select {
+      width: 120px; background: #333; border: 1px solid #555; color: white;
+      padding: 4px; border-radius: 4px; font-family: monospace; font-weight: bold;
     }
-    p {
-      line-height: 1.6;
-      margin-bottom: 15px;
-      color: #aaa;
+    input[type="number"].small { width: 70px; }
+
+    .switch-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; font-weight: bold; gap: 10px; }
+    .switch-row .left { display:flex; align-items:center; gap:8px; }
+    .help {
+      display:inline-flex; align-items:center; justify-content:center;
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 1px solid #666; color:#bbb; font-size: 0.72rem; cursor: help;
+      background:#1b1b1f;
     }
-    .btn {
-      display: inline-block;
-      padding: 12px 24px;
-      background: #00d4ff;
-      color: #111;
-      text-decoration: none;
-      border-radius: 4px;
-      font-weight: bold;
-      margin: 10px;
+
+    .toggle-switch { position: relative; display: inline-block; width: 44px; height: 20px; margin: 0 5px; flex: 0 0 auto;}
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #555; transition: .25s; border-radius: 20px;
     }
-    .btn:hover {
-      background: #00ffff;
+    .slider:before {
+      position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px;
+      background-color: white; transition: .25s; border-radius: 50%;
     }
-    .note {
-      background: rgba(255, 200, 0, 0.1);
-      border: 1px solid #ffcc00;
-      border-radius: 4px;
-      padding: 15px;
-      margin-top: 30px;
-      font-size: 0.9em;
+    input:checked + .slider { background-color: #00d4ff; }
+    input:checked + .slider:before { transform: translateX(24px); }
+
+    /* Custom colors */
+    #turboToggle:checked + .slider { background-color: #ffaa00; }
+    #camLockToggle:checked + .slider { background-color: #66ff66; }
+    #jitterToggle:checked + .slider { background-color: #aa66ff; }
+    #lossToggle:checked + .slider { background-color: #ff6666; }
+
+    /* Graph */
+    #graph-container {
+      position: relative; height: 160px; background: #000;
+      border: 1px solid #555; border-radius: 4px; margin-bottom: 5px;
+      overflow:hidden;
     }
+    canvas { width: 100%; height: 100%; display: block; }
+
+    .graph-legend {
+      position:absolute; left:8px; top:6px; font-size:0.72rem; color:#aaa;
+      display:flex; flex-direction:column; gap:2px;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+    .legend-row { display:flex; align-items:center; gap:6px; }
+    .swatch { width:10px; height:10px; border-radius:2px; background:#999; display:inline-block; }
+    .swatch.q { background:#0066ff; }
+    .swatch.l { background:#777; border:1px dashed #aaa; box-sizing:border-box; }
+    .swatch.d { background:#ffcc00; }
+    .swatch.p { background:#00ff00; }
+    .swatch.m { background:#ff00ff; }
+
+    .sweep-overlay {
+      position: absolute; top:0; left:0; width:100%; height:100%;
+      background: rgba(0,0,0,0.75);
+      display: flex; align-items: center; justify-content: center;
+      color: #ffaa00; font-weight: bold; font-size: 1.05rem;
+      pointer-events: none; opacity: 0; transition: opacity 0.2s;
+      letter-spacing: 1px;
+    }
+    .active-sweep .sweep-overlay { opacity: 1; }
+
+    .stats-grid {
+      display:grid; grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .stat-box {
+      background: #222; padding: 8px; border-radius: 4px;
+      border: 1px solid #333;
+      text-align:center;
+    }
+    .stat-label { font-size: 0.68rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-val { font-size: 1.05rem; font-weight: bold; color: #fff; font-family: monospace; line-height: 1.1; }
+    .stat-sub { font-size: 0.75rem; color:#bbb; font-family: monospace; margin-top: 2px; }
+
+    .counts-table {
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .count-cell {
+      background:#1b1b1f; border:1px solid #333; border-radius:4px;
+      padding:6px; text-align:center;
+    }
+    .count-title { font-size:0.72rem; color:#aaa; }
+    .count-val { font-size:0.95rem; font-family: monospace; color:#fff; font-weight:bold; }
+    .tiny { font-size: 0.72rem; color:#aaa; font-family: monospace; margin-top: 6px; line-height: 1.2; }
+
+    .btn-row { display:flex; gap:8px; }
+    button {
+      padding: 10px; width: 100%; cursor: pointer; border: none; border-radius: 4px;
+      font-weight: bold; font-size: 0.88rem; transition: 0.15s; color: white;
+    }
+    #fireBtn { background: #0066cc; }
+    #fireBtn:hover { background: #0088ff; }
+    #fireBtn:disabled { background: #333; color:#555; cursor: not-allowed; }
+
+    #sweepBtn { background: #cc8800; }
+    #sweepBtn:hover { background: #ffaa00; }
+    #sweepBtn:disabled { background: #333; color:#555; cursor: not-allowed; }
+
+    #chshBtn { background: #8844cc; }
+    #chshBtn:hover { background: #aa66ff; }
+    #chshBtn:disabled { background: #333; color:#555; cursor: not-allowed; }
+
+    #resetBtn { background: #444; }
+    #resetBtn:hover { background: #666; }
+
+    #viewBtn { background: #2b7a3d; }
+    #viewBtn:hover { background: #3aa652; }
+
+    .pill {
+      display:inline-flex; align-items:center; gap:6px;
+      font-size:0.75rem; color:#ccc; background:#1b1b1f; border:1px solid #333;
+      padding:4px 8px; border-radius:999px;
+    }
+    .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+    .dot.g { background:#00ff00; }
+    .dot.p { background:#ff00ff; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🔬 Bell Test: Ultimate Lab</h1>
-    <p>
-      An interactive 3D visualization exploring quantum entanglement, Bell inequalities, 
-      and the CHSH test. Compare quantum mechanical predictions with local hidden-variable models.
-    </p>
-    
-    <p>
-      <strong>Features:</strong><br>
-      • Interactive 3D environment with Three.js<br>
-      • Real-time quantum vs. local hidden-variable comparison<br>
-      • CHSH inequality violation demonstrations<br>
-      • Multiple local models (deterministic, stochastic, threshold)<br>
-      • Auto-sweep and manual control modes
-    </p>
-    
-    <a href="/" class="btn">← Back to Portfolio</a>
-    
-    <div class="note">
-      <strong>⚙️ Setup Note:</strong> 
-      The complete interactive Bell Test Lab will load here once the full HTML file 
-      (with Three.js visualization) is placed in the public folder. 
-      See <code>/public/README-BELL-TEST.md</code> for details.
+
+  <div id="hud">
+    <h3>
+      <span>Bell Test Lab</span>
+      <span class="subtle" id="modeBanner">E(Δ) + CHSH</span>
+    </h3>
+
+    <div id="graph-container">
+      <canvas id="graphCanvas"></canvas>
+      <div class="graph-legend">
+        <div class="legend-row"><span class="swatch q"></span><span id="legendQuantum">Quantum theory</span></div>
+        <div class="legend-row"><span class="swatch l"></span><span>Local bound (schematic)</span></div>
+        <div class="legend-row"><span class="swatch d"></span><span>Sweep / CHSH points</span></div>
+        <div class="legend-row"><span class="swatch p"></span><span>Outcome +1 (green)</span></div>
+        <div class="legend-row"><span class="swatch m"></span><span>Outcome −1 (purple)</span></div>
+      </div>
+      <div id="overlayStatus" class="sweep-overlay">RUNNING...</div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-val" id="emittedVal">0</div>
+        <div class="stat-label">Emitted pairs</div>
+        <div class="stat-sub" id="coinSub">Coincidences: 0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="eVal">0.000</div>
+        <div class="stat-label">E(current bin)</div>
+        <div class="stat-sub" id="eSub">σ≈0.000  N=0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="sVal">—</div>
+        <div class="stat-label">CHSH S</div>
+        <div class="stat-sub" id="sSub">σ≈—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="theoryVal">0.000</div>
+        <div class="stat-label">Theory E(Δ)</div>
+        <div class="stat-sub" id="deltaSub">Δ=0°  bin=0°</div>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="switch-row">
+        <div class="left">
+          <span style="color:#aaa">Mode</span>
+          <span class="help" title="Quantum: correlated outcomes follow the entangled-state prediction. Local: outcomes are produced by shared hidden variables and local rules.">i</span>
+        </div>
+        <span style="color:#aaa">Local</span>
+        <label class="toggle-switch" title="Toggle between Quantum and Local (hidden-variable) mode">
+          <input type="checkbox" id="quantumToggle" checked>
+          <span class="slider"></span>
+        </label>
+        <span style="color:#00d4ff">Quantum</span>
+      </div>
+
+      <div class="input-row" style="margin-top:8px;">
+        <span>Experiment</span>
+        <select id="experimentSelect" title="Choose what the angles mean and which quantum theory curve is drawn">
+          <option value="electron" selected>Electron spin (k=1)</option>
+          <option value="photon">Photon polarization (k=2)</option>
+        </select>
+      </div>
+
+      <div class="input-row">
+        <span>Local model</span>
+        <select id="localModelSelect" title="Choose a local hidden-variable model (only used in Local mode)">
+          <option value="signcos" selected>Deterministic sign(cos)</option>
+          <option value="malus">Stochastic Malus-like</option>
+          <option value="threshold">Threshold + losses</option>
+        </select>
+      </div>
+
+      <div class="switch-row" style="margin-top:8px; border-top:1px solid #333; padding-top:8px;">
+        <div class="left">
+          <span style="color:#aaa">Field Lines</span>
+          <span class="help" title="Visual-only: shows the station field geometry. Does not change outcomes.">i</span>
+        </div>
+        <span style="color:#aaa">Hide</span>
+        <label class="toggle-switch" title="Show/hide field lines on both stations">
+          <input type="checkbox" id="fieldToggle">
+          <span class="slider"></span>
+        </label>
+        <span style="color:#00d4ff">Show</span>
+      </div>
+
+      <div class="switch-row" style="margin-top:8px;">
+        <div class="left">
+          <span style="color:#aaa">Camera Lock</span>
+          <span class="help" title="Locks orbit controls for clean demos.">i</span>
+        </div>
+        <span style="color:#aaa">Free</span>
+        <label class="toggle-switch" title="Lock/unlock the orbit camera controls">
+          <input type="checkbox" id="camLockToggle">
+          <span class="slider"></span>
+        </label>
+        <span style="color:#66ff66">Lock</span>
+      </div>
+    </div>
+
+    <div class="control-group" style="border-left: 4px solid #cc8800;">
+      <div class="label-row" style="color:#ffaa00; margin-bottom:10px;">
+        <span>EXPERIMENT CONFIG</span>
+        <span class="pill" title="Green = +1, Purple = −1">
+          <span class="dot g"></span><span>+1</span>
+          <span class="dot p"></span><span>−1</span>
+        </span>
+      </div>
+
+      <div class="input-row">
+        <span>Bin Size (deg)</span>
+        <input type="number" class="small" id="binInput" value="5" min="1" max="30" />
+      </div>
+
+      <div class="input-row">
+        <span>Step Size (deg)</span>
+        <input type="number" class="small" id="stepInput" value="10" min="1" max="90" />
+      </div>
+
+      <div class="input-row">
+        <span>Samples/Point</span>
+        <input type="number" class="small" id="samplesInput" value="200" min="10" max="5000" />
+      </div>
+
+      <div class="switch-row" style="margin-top:8px; border-top:1px solid #333; padding-top:8px;">
+        <div class="left">
+          <span style="color:#aaa">Scatter Jitter</span>
+          <span class="help" title="Visual-only: adds tiny jitter so overlapping points are visible.">i</span>
+        </div>
+        <span style="color:#aaa">Off</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="jitterToggle">
+          <span class="slider"></span>
+        </label>
+        <span style="color:#aa66ff">On</span>
+      </div>
+
+      <div class="switch-row" style="margin-top:8px;">
+        <div class="left">
+          <span style="color:#aaa">Normal Speed</span>
+          <span class="help" title="Turbo increases emission rate. Physics is unchanged.">i</span>
+        </div>
+        <span style="color:#aaa">Normal</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="turboToggle" checked>
+          <span class="slider"></span>
+        </label>
+        <span style="color:#ffaa00">TURBO</span>
+      </div>
+
+      <div class="switch-row" style="margin-top:8px;">
+        <div class="left">
+          <span style="color:#aaa">Losses</span>
+          <span class="help" title="Only meaningful for the Threshold local model.">i</span>
+        </div>
+        <span style="color:#aaa">Off</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="lossToggle">
+          <span class="slider"></span>
+        </label>
+        <span style="color:#ff6666">On</span>
+      </div>
+
+      <div class="input-row" style="margin-top:8px;">
+        <span>Loss Threshold</span>
+        <input type="number" class="small" id="lossThresholdInput" value="0.10" min="0" max="0.49" step="0.01" />
+      </div>
+    </div>
+
+    <div class="control-group" style="border-left: 4px solid #ff4444;">
+      <div class="label-row">
+        <span>ALICE (Top)</span>
+        <span class="val" id="valA">0°</span>
+      </div>
+      <input type="range" id="sliderA" min="0" max="360" value="0">
+    </div>
+
+    <div class="control-group" style="border-left: 4px solid #4444ff;">
+      <div class="label-row">
+        <span>BOB (Bottom)</span>
+        <span class="val" id="valB">45°</span>
+      </div>
+      <input type="range" id="sliderB" min="0" max="360" value="45">
+    </div>
+
+    <div class="control-group" style="border-left: 4px solid #8844cc;">
+      <div class="label-row">
+        <span>CHSH SETTINGS</span>
+        <span class="help" title="S = |E(a,b) − E(a,b′) + E(a′,b) + E(a′,b′)|">i</span>
+      </div>
+
+      <div class="input-row">
+        <span>Preset</span>
+        <select id="chshPresetSelect">
+          <option value="max" selected>Max violation</option>
+          <option value="noviolation">No violation</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+
+      <div class="input-row">
+        <span>a / a′</span>
+        <div style="display:flex; gap:8px;">
+          <input type="number" class="small" id="aInput" value="0" min="0" max="360" />
+          <input type="number" class="small" id="apInput" value="45" min="0" max="360" />
+        </div>
+      </div>
+
+      <div class="input-row">
+        <span>b / b′</span>
+        <div style="display:flex; gap:8px;">
+          <input type="number" class="small" id="bInput" value="22.5" min="0" max="360" step="0.5" />
+          <input type="number" class="small" id="bpInput" value="67.5" min="0" max="360" step="0.5" />
+        </div>
+      </div>
+
+      <div class="tiny" id="chshTable">
+        E(a,b)=— &nbsp; E(a,b′)=—<br>
+        E(a′,b)=— &nbsp; E(a′,b′)=—
+      </div>
+
+      <div class="tiny" id="chshProgress">
+        <div class="progress-grid">
+          <div class="bar-row" id="rowEab">
+            <div class="bar-label">(a,b)</div>
+            <div class="bar-wrap"><div class="bar-fill" id="barEab"></div></div>
+            <div class="bar-text" id="txtEab">0/0</div>
+          </div>
+          <div class="bar-row" id="rowEabp">
+            <div class="bar-label">(a,b′)</div>
+            <div class="bar-wrap"><div class="bar-fill" id="barEabp"></div></div>
+            <div class="bar-text" id="txtEabp">0/0</div>
+          </div>
+          <div class="bar-row" id="rowEapb">
+            <div class="bar-label">(a′,b)</div>
+            <div class="bar-wrap"><div class="bar-fill" id="barEapb"></div></div>
+            <div class="bar-text" id="txtEapb">0/0</div>
+          </div>
+          <div class="bar-row" id="rowEapbp">
+            <div class="bar-label">(a′,b′)</div>
+            <div class="bar-wrap"><div class="bar-fill" id="barEapbp"></div></div>
+            <div class="bar-text" id="txtEapbp">0/0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button id="sweepBtn">AUTO-SWEEP</button>
+      <button id="chshBtn">RUN CHSH</button>
+    </div>
+
+    <div class="btn-row">
+      <button id="fireBtn">MANUAL FIRE (Hold)</button>
+      <button id="viewBtn">RESET VIEW</button>
+    </div>
+
+    <button id="resetBtn">RESET DATA</button>
+
+    <div class="control-group">
+      <div class="label-row"><span>COINCIDENCE COUNTS (CURRENT BIN)</span><span class="val" id="binLabel">—</span></div>
+      <div class="counts-table">
+        <div class="count-cell"><div class="count-title">N++</div><div class="count-val" id="npp">0</div></div>
+        <div class="count-cell"><div class="count-title">N+-</div><div class="count-val" id="npm">0</div></div>
+        <div class="count-cell"><div class="count-title">N-+</div><div class="count-val" id="nmp">0</div></div>
+        <div class="count-cell"><div class="count-title">N--</div><div class="count-val" id="nmm">0</div></div>
+      </div>
+      <div class="tiny">E = (N++ + N-- − N+- − N-+) / N</div>
     </div>
   </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ---------------------------
+    // Scene
+    // ---------------------------
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x111111);
+    scene.fog = new THREE.Fog(0x111111, 800, 2500);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 5000);
+    const DEFAULT_CAM_POS = new THREE.Vector3(0, 900, 700);
+    const DEFAULT_TARGET  = new THREE.Vector3(0, 0, 0);
+    camera.position.copy(DEFAULT_CAM_POS);
+    camera.lookAt(DEFAULT_TARGET);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.copy(DEFAULT_TARGET);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    dirLight.position.set(100, 500, 100);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    scene.add(dirLight);
+
+    // ---------------------------
+    // Materials / Geometry
+    // ---------------------------
+    const matFloor = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, metalness: 0.2 });
+    const matCrystal = new THREE.MeshPhysicalMaterial({
+      color: 0xaaffff, transmission: 0.6, opacity: 0.9,
+      roughness: 0.1, metalness: 0,
+      emissive: 0x0044aa, emissiveIntensity: 0.5
+    });
+    const matSource = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4 });
+    const magnetRedMat  = new THREE.MeshStandardMaterial({ color: 0xdd2222, metalness: 0.2, roughness: 0.4 });
+    const magnetBlueMat = new THREE.MeshStandardMaterial({ color: 0x2222dd, metalness: 0.2, roughness: 0.4 });
+    const matScreen = new THREE.MeshStandardMaterial({ color: 0xeeeeee, emissive: 0x222222, emissiveIntensity: 0.1 });
+    const fieldLineMat = new THREE.LineBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.3 });
+    const matHitGreen  = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const matHitPurple = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+    const matNoDetect  = new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.35 });
+
+    const particleGeo = new THREE.SphereGeometry(3);
+    const particleMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const photonMat = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.85 });
+
+    // ---------------------------
+    // Lab layout
+    // ---------------------------
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), matFloor);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -60;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const sourceGroup = new THREE.Group();
+    sourceGroup.position.set(-400, 0, 0);
+    scene.add(sourceGroup);
+
+    const laserHousing = new THREE.Mesh(new THREE.BoxGeometry(60, 40, 80), matSource);
+    laserHousing.castShadow = true;
+    sourceGroup.add(laserHousing);
+
+    const crystalMesh = new THREE.Mesh(new THREE.OctahedronGeometry(15), matCrystal);
+    crystalMesh.position.set(100, 0, 0);
+    sourceGroup.add(crystalMesh);
+
+    function createStation() {
+      const station = new THREE.Group();
+
+      const mount = new THREE.Mesh(new THREE.CylinderGeometry(40, 50, 10, 32), matSource);
+      mount.position.y = -45;
+      mount.receiveShadow = true;
+      station.add(mount);
+
+      const rotGroup = new THREE.Group();
+      station.add(rotGroup);
+
+      const s = 0.7;
+
+      const magGeoN = new THREE.CylinderGeometry(30 * s, 30 * s, 140 * s, 3);
+      const magN = new THREE.Mesh(magGeoN, magnetRedMat);
+      magN.castShadow = true;
+      magN.rotation.x = Math.PI / 2;
+      magN.rotation.z = Math.PI;
+      magN.position.set(0, 35 * s, 0);
+      rotGroup.add(magN);
+
+      const magGeoBase = new THREE.BoxGeometry(80 * s, 20 * s, 140 * s);
+      const magBase = new THREE.Mesh(magGeoBase, magnetBlueMat);
+      magBase.position.set(0, -55 * s, 0);
+      magBase.castShadow = true;
+      rotGroup.add(magBase);
+
+      const magGeoSide = new THREE.BoxGeometry(20 * s, 50 * s, 140 * s);
+      const magLeft = new THREE.Mesh(magGeoSide, magnetBlueMat);
+      magLeft.position.set(-30 * s, -30 * s, 0);
+      magLeft.castShadow = true;
+      rotGroup.add(magLeft);
+
+      const magRight = new THREE.Mesh(magGeoSide, magnetBlueMat);
+      magRight.position.set(30 * s, -30 * s, 0);
+      magRight.castShadow = true;
+      rotGroup.add(magRight);
+
+      const fieldGroup = new THREE.Group();
+      fieldGroup.name = "fieldLines";
+      fieldGroup.visible = false;
+      rotGroup.add(fieldGroup);
+
+      const lineCount = 10;
+      const raysPerSlice = 5;
+      const length = 140 * s;
+
+      for (let z = -length/2 + 5; z <= length/2 - 5; z += (length/lineCount)) {
+        const start = new THREE.Vector3(0, 20 * s, z);
+        for (let i = 0; i < raysPerSlice; i++) {
+          const xSpread = (-25 * s) + (50 * s * (i / (raysPerSlice-1)));
+          const end = new THREE.Vector3(xSpread, -45 * s, z);
+          const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+          fieldGroup.add(new THREE.Line(geometry, fieldLineMat));
+        }
+      }
+
+      const screen = new THREE.Mesh(new THREE.BoxGeometry(140, 140, 2), matScreen);
+      screen.position.z = -160;
+      screen.receiveShadow = true;
+      station.add(screen);
+
+      return { root: station, rotator: rotGroup, fields: fieldGroup };
+    }
+
+    const alice = createStation();
+    alice.root.position.set(200, 0, -150);
+    alice.root.lookAt(-300, 0, 0);
+    scene.add(alice.root);
+
+    const bob = createStation();
+    bob.root.position.set(200, 0, 150);
+    bob.root.lookAt(-300, 0, 0);
+    scene.add(bob.root);
+
+    // ---------------------------
+    // UI
+    // ---------------------------
+    const ui = {
+      slA: document.getElementById('sliderA'),
+      slB: document.getElementById('sliderB'),
+      valA: document.getElementById('valA'),
+      valB: document.getElementById('valB'),
+      qMode: document.getElementById('quantumToggle'),
+      fMode: document.getElementById('fieldToggle'),
+      turboMode: document.getElementById('turboToggle'),
+      camLock: document.getElementById('camLockToggle'),
+      jitter: document.getElementById('jitterToggle'),
+
+      stepIn: document.getElementById('stepInput'),
+      sampIn: document.getElementById('samplesInput'),
+      binIn: document.getElementById('binInput'),
+
+      lossToggle: document.getElementById('lossToggle'),
+      lossThrIn: document.getElementById('lossThresholdInput'),
+
+      experiment: document.getElementById('experimentSelect'),
+      localModel: document.getElementById('localModelSelect'),
+
+      emittedVal: document.getElementById('emittedVal'),
+      coinSub: document.getElementById('coinSub'),
+      eVal: document.getElementById('eVal'),
+      eSub: document.getElementById('eSub'),
+      sVal: document.getElementById('sVal'),
+      sSub: document.getElementById('sSub'),
+      theoryVal: document.getElementById('theoryVal'),
+      deltaSub: document.getElementById('deltaSub'),
+      modeBanner: document.getElementById('modeBanner'),
+
+      rowEab:  document.getElementById('rowEab'),
+      rowEabp: document.getElementById('rowEabp'),
+      rowEapb: document.getElementById('rowEapb'),
+      rowEapbp:document.getElementById('rowEapbp'),
+      barEab:  document.getElementById('barEab'),
+      barEabp: document.getElementById('barEabp'),
+      barEapb: document.getElementById('barEapb'),
+      barEapbp:document.getElementById('barEapbp'),
+      txtEab:  document.getElementById('txtEab'),
+      txtEabp: document.getElementById('txtEabp'),
+      txtEapb: document.getElementById('txtEapb'),
+      txtEapbp:document.getElementById('txtEapbp'),
+
+      chshPreset: document.getElementById('chshPresetSelect'),
+      aIn: document.getElementById('aInput'),
+      apIn: document.getElementById('apInput'),
+      bIn: document.getElementById('bInput'),
+      bpIn: document.getElementById('bpInput'),
+      chshTable: document.getElementById('chshTable'),
+
+      binLabel: document.getElementById('binLabel'),
+      npp: document.getElementById('npp'),
+      npm: document.getElementById('npm'),
+      nmp: document.getElementById('nmp'),
+      nmm: document.getElementById('nmm'),
+
+      graphContainer: document.getElementById('graph-container'),
+      overlayStatus: document.getElementById('overlayStatus'),
+      canvas: document.getElementById('graphCanvas'),
+    };
+
+    // ✅ Guard: make sure IDs are unique (bars won't move if you're looking at a different duplicate)
+    for (const id of ["barEab","barEabp","barEapb","barEapbp","txtEab","txtEabp","txtEapb","txtEapbp"]) {
+      if (document.querySelectorAll("#" + id).length !== 1) {
+        console.warn("Duplicate or missing ID:", id, "count=", document.querySelectorAll("#" + id).length);
+      }
+    }
+
+    const ctx = ui.canvas.getContext('2d');
+
+    // ---------------------------
+    // Data structures
+    // ---------------------------
+    let binStats = new Map();      // binKey -> { npp,npm,nmp,nmm, n, sum, E, sigma }
+    let sweepPoints = [];          // [{x, E, sigma, n}]
+
+    let chsh = {
+      running: false,
+      idx: 0,
+      seq: [],
+      results: { Eab:null, Eabp:null, Eapb:null, Eapbp:null, Sab:null },
+      accumulator: null, // {npp,npm,nmp,nmm,n,sum}
+    };
+
+    let emittedPairs = 0;
+    let coincidencePairs = 0;
+
+    // ---------------------------
+    // Helpers
+    // ---------------------------
+    function degToRad(d) { return d * Math.PI / 180; }
+
+    function foldDelta180(rawDeltaDeg) {
+      let d = Math.abs(rawDeltaDeg) % 360;
+      if (d > 180) d = 360 - d;
+      return d;
+    }
+
+    function getAngles() {
+      return { a: parseFloat(ui.slA.value), b: parseFloat(ui.slB.value) };
+    }
+
+    function getK() {
+      return ui.experiment.value === 'photon' ? 2 : 1;
+    }
+
+    function theoryE(deltaDeg) {
+      const k = getK();
+      return -Math.cos(k * degToRad(deltaDeg));
+    }
+
+    function sigmaFromEandN(E, N) {
+      if (!N || N <= 0) return 0;
+      const v = Math.max(0, 1 - E*E);
+      return Math.sqrt(v / N);
+    }
+
+    function getBinSize() {
+      const v = parseInt(ui.binIn.value, 10);
+      return (Number.isFinite(v) && v > 0) ? v : 5;
+    }
+
+    function deltaBinKey(deltaDeg) {
+      const bs = getBinSize();
+      return Math.round(deltaDeg / bs) * bs;
+    }
+
+    function ensureBin(key) {
+      if (!binStats.has(key)) {
+        binStats.set(key, { npp:0, npm:0, nmp:0, nmm:0, n:0, sum:0, E:0, sigma:0 });
+      }
+      return binStats.get(key);
+    }
+
+    function updateBinComputed(b) {
+      const N = b.n;
+      const E = N ? (b.sum / N) : 0;
+      b.E = E;
+      b.sigma = sigmaFromEandN(E, N);
+    }
+
+    function updateCountsPanelForCurrentDelta() {
+      const { a, b } = getAngles();
+      const delta = foldDelta180(a - b);
+      const key = deltaBinKey(delta);
+
+      ui.binLabel.textContent = `Δ bin: ${key}°`;
+      const stats = binStats.get(key) || { npp:0, npm:0, nmp:0, nmm:0, n:0, E:0, sigma:0 };
+
+      ui.npp.textContent = stats.npp;
+      ui.npm.textContent = stats.npm;
+      ui.nmp.textContent = stats.nmp;
+      ui.nmm.textContent = stats.nmm;
+
+      ui.eVal.textContent = stats.n ? stats.E.toFixed(3) : "0.000";
+      ui.eSub.textContent = `σ≈${(stats.n ? stats.sigma : 0).toFixed(3)}  N=${stats.n || 0}`;
+
+      const th = theoryE(delta);
+      ui.theoryVal.textContent = th.toFixed(3);
+      ui.deltaSub.textContent = `Δ=${delta.toFixed(1)}°  bin=${key}°`;
+    }
+
+    function updateTopStats() {
+      ui.emittedVal.textContent = emittedPairs;
+      ui.coinSub.textContent = `Coincidences: ${coincidencePairs}`;
+    }
+
+    function setOverlay(on, text) {
+      if (on) {
+        ui.graphContainer.classList.add('active-sweep');
+        ui.overlayStatus.textContent = text || "RUNNING...";
+      } else {
+        ui.graphContainer.classList.remove('active-sweep');
+      }
+    }
+
+    // ✅ sample count always comes from the UI (prevents 0/0 and stalled bars)
+    function getCfgSamples() {
+      const v = Number(ui.sampIn.value);
+      return (Number.isFinite(v) && v > 0) ? Math.floor(v) : 200;
+    }
+
+    function toggleControls(enable) {
+      document.getElementById('sweepBtn').disabled = !enable;
+      document.getElementById('chshBtn').disabled  = !enable;
+      document.getElementById('fireBtn').disabled  = !enable;
+
+      ui.stepIn.disabled = !enable;
+      ui.sampIn.disabled = !enable;
+      ui.binIn.disabled  = !enable;
+
+      ui.aIn.disabled = !enable;
+      ui.apIn.disabled = !enable;
+      ui.bIn.disabled = !enable;
+      ui.bpIn.disabled = !enable;
+      ui.chshPreset.disabled = !enable;
+
+      ui.localModel.disabled = !enable;
+      ui.experiment.disabled = !enable;
+      ui.qMode.disabled = !enable;
+
+      ui.lossToggle.disabled = !enable;
+      ui.lossThrIn.disabled = !enable;
+    }
+
+    // ---------------------------
+    // Bars
+    // ---------------------------
+    let cfgStepSize = 10;
+    let cfgSamples = 200;
+
+    function setBar(barEl, pct) {
+      const clamped = Math.max(0, Math.min(100, pct));
+      barEl.style.width = clamped.toFixed(1) + "%";
+    }
+
+    function resetChshBars() {
+      const total = getCfgSamples();
+      cfgSamples = total;
+
+      [ui.rowEab, ui.rowEabp, ui.rowEapb, ui.rowEapbp].forEach(r => r.classList.remove('bar-done'));
+
+      ui.barEab.style.width   = "0%";
+      ui.barEabp.style.width  = "0%";
+      ui.barEapb.style.width  = "0%";
+      ui.barEapbp.style.width = "0%";
+
+      ui.txtEab.textContent   = `0/${total}`;
+      ui.txtEabp.textContent  = `0/${total}`;
+      ui.txtEapb.textContent  = `0/${total}`;
+      ui.txtEapbp.textContent = `0/${total}`;
+    }
+
+    function updateChshBarsLive() {
+      if (!chsh.running) return;
+
+      const total = Math.max(1, cfgSamples);
+      const idx = chsh.idx;
+      const n = (chsh.accumulator && typeof chsh.accumulator.n === "number") ? chsh.accumulator.n : 0;
+      const pct = 100 * (n / total);
+
+      if (idx === 0) { setBar(ui.barEab, pct);   ui.txtEab.textContent   = `${n}/${cfgSamples}`; }
+      if (idx === 1) { setBar(ui.barEabp, pct);  ui.txtEabp.textContent  = `${n}/${cfgSamples}`; }
+      if (idx === 2) { setBar(ui.barEapb, pct);  ui.txtEapb.textContent  = `${n}/${cfgSamples}`; }
+      if (idx === 3) { setBar(ui.barEapbp, pct); ui.txtEapbp.textContent = `${n}/${cfgSamples}`; }
+    }
+
+    // ---------------------------
+    // Graph
+    // ---------------------------
+    let graphW = 360, graphH = 160;
+
+    function resizeGraphCanvas() {
+      const rect = ui.graphContainer.getBoundingClientRect();
+      graphW = Math.max(320, Math.floor(rect.width));
+      graphH = Math.max(140, Math.floor(rect.height));
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+      ui.canvas.width  = Math.floor(graphW * dpr);
+      ui.canvas.height = Math.floor(graphH * dpr);
+      ui.canvas.style.width  = graphW + "px";
+      ui.canvas.style.height = graphH + "px";
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function drawGraph() {
+      const w = graphW, h = graphH;
+      const rangeMax = 180;
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
+
+      ctx.strokeStyle = "#222";
+      for (let deg = 0; deg <= 180; deg += 30) {
+        const x = (deg / rangeMax) * w;
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+
+      // theory
+      ctx.strokeStyle = "#0066ff"; ctx.lineWidth = 2; ctx.beginPath();
+      for (let x = 0; x <= w; x++) {
+        const angleDeg = (x / w) * rangeMax;
+        const corr = theoryE(angleDeg);
+        const y = (h/2) - (corr * (h/2 - 12));
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // local schematic
+      ctx.strokeStyle = "#777"; ctx.setLineDash([6, 6]); ctx.lineWidth = 1.5; ctx.beginPath();
+      ctx.moveTo(0, h - 12); ctx.lineTo(w/2, h/2); ctx.lineTo(w, 12);
+      ctx.stroke(); ctx.setLineDash([]);
+
+      const jitter = ui.jitter.checked;
+      const yFromE = (E) => (h/2) - (E * (h/2 - 24));
+      const xFromDeg = (d) => (d / rangeMax) * w;
+
+      for (const [key, b] of binStats.entries()) {
+        if (!b.n) continue;
+        const px = xFromDeg(key);
+        const py = yFromE(b.E);
+        const err = b.sigma * (h/2 - 24);
+        const jx = jitter ? (Math.random() - 0.5) * 2 : 0;
+        const jy = jitter ? (Math.random() - 0.5) * 2 : 0;
+
+        ctx.strokeStyle = "rgba(220,220,220,0.35)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px + jx, py - err + jy);
+        ctx.lineTo(px + jx, py + err + jy);
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(220,220,220,0.55)";
+        ctx.beginPath();
+        ctx.arc(px + jx, py + jy, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (const p of sweepPoints) {
+        const px = xFromDeg(p.x);
+        const py = yFromE(p.E);
+        const err = p.sigma * (h/2 - 24);
+        const jx = jitter ? (Math.random() - 0.5) * 3 : 0;
+        const jy = jitter ? (Math.random() - 0.5) * 3 : 0;
+
+        ctx.strokeStyle = "rgba(255,204,0,0.75)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(px + jx, py - err + jy);
+        ctx.lineTo(px + jx, py + err + jy);
+        ctx.stroke();
+
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = "rgba(255,204,0,0.8)";
+        ctx.fillStyle = "#ffcc00";
+        ctx.beginPath();
+        ctx.arc(px + jx, py + jy, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      const { a, b } = getAngles();
+      const delta = foldDelta180(a - b);
+      const key = deltaBinKey(delta);
+      const px = xFromDeg(key);
+      ctx.strokeStyle = "rgba(0,212,255,0.35)";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, h); ctx.stroke();
+    }
+
+    // ---------------------------
+    // Particles / emission
+    // ---------------------------
+    let particles = [];
+    let stuckParticles = [];
+
+    let isFiring = false;
+    let spawnState = 'idle';
+    let sourcePhoton = null;
+
+    const clock = new THREE.Clock();
+    const SPEED_Z = 900;
+    const DEFLECT_SPEED = 90;
+    const PHOTON_SPEED = { normal: 480, turbo: 2400 };
+    const COOLDOWN_MS  = { normal: 70,  turbo: 12 };
+
+    function clearScreenHits() {
+      stuckParticles.forEach(m => { if (m && m.parent) m.parent.remove(m); });
+      stuckParticles = [];
+    }
+
+    function flushInFlightParticles() {
+      particles.forEach(p => { if (p.mesh && p.mesh.parent) p.mesh.parent.remove(p.mesh); });
+      particles = [];
+    }
+
+    function abortSpawnPhoton() {
+      if (sourcePhoton && sourcePhoton.parent) sourcePhoton.parent.remove(sourcePhoton);
+      sourcePhoton = null;
+      spawnState = 'idle';
+    }
+
+    function clearMeasurementBlock() {
+      clearScreenHits();
+      flushInFlightParticles();
+      abortSpawnPhoton();
+    }
+
+    function startSpawnSequence() {
+      if (spawnState !== 'idle') return;
+      spawnState = 'photon-traveling';
+      sourcePhoton = new THREE.Mesh(new THREE.SphereGeometry(2), photonMat);
+      sourcePhoton.position.set(30, 0, 0);
+      sourceGroup.add(sourcePhoton);
+    }
+
+    function updateSpawnAnimation(dt) {
+      if (spawnState !== 'photon-traveling') return;
+
+      const speed = ui.turboMode.checked ? PHOTON_SPEED.turbo : PHOTON_SPEED.normal;
+
+      sourcePhoton.position.x += speed * dt;
+      if (sourcePhoton.position.x >= 100) {
+        sourceGroup.remove(sourcePhoton);
+        sourcePhoton = null;
+
+        crystalMesh.material.emissiveIntensity = 2.0;
+        spawnPair();
+        spawnState = 'cooldown';
+
+        const cooldown = ui.turboMode.checked ? COOLDOWN_MS.turbo : COOLDOWN_MS.normal;
+        setTimeout(() => {
+          crystalMesh.material.emissiveIntensity = 0.5;
+          spawnState = 'idle';
+        }, cooldown);
+      }
+    }
+
+    function spawnPair() {
+      emittedPairs++;
+
+      const lambda = Math.random() * 360;
+      const u = Math.random();
+
+      const meshA = new THREE.Mesh(particleGeo, particleMat);
+      const meshB = new THREE.Mesh(particleGeo, particleMat);
+
+      const crystalWorldPos = new THREE.Vector3();
+      crystalMesh.getWorldPosition(crystalWorldPos);
+
+      alice.root.add(meshA);
+      bob.root.add(meshB);
+
+      meshA.position.copy(alice.root.worldToLocal(crystalWorldPos.clone()));
+      meshB.position.copy(bob.root.worldToLocal(crystalWorldPos.clone()));
+
+      const pA = { mesh: meshA, role:'alice', decided:false, finished:false, spin:0, hidden:lambda, u, detected:true };
+      const pB = { mesh: meshB, role:'bob',   decided:false, finished:false, spin:0, hidden:lambda, u, detected:true };
+      pA.partner = pB; pB.partner = pA;
+
+      particles.push(pA, pB);
+      updateTopStats();
+    }
+
+    // ---------------------------
+    // Outcome models
+    // ---------------------------
+    function localOutcome_signcos(role, stationAngle, lambda) {
+      const diff = degToRad(stationAngle - lambda);
+      let v = (Math.cos(diff) >= 0) ? 1 : -1;
+      if (role === 'bob') v *= -1;
+      return v;
+    }
+
+    function localOutcome_malus(role, stationAngle, lambda, sharedU) {
+      const lambdaRole = (role === 'alice') ? lambda : (lambda + 90);
+      const theta = degToRad(stationAngle - lambdaRole);
+      const pPlus = Math.pow(Math.cos(theta), 2);
+      const u = (role === 'alice') ? sharedU : (sharedU * 0.731 + 0.137) % 1.0;
+      return (u < pPlus) ? 1 : -1;
+    }
+
+    function localOutcome_threshold(role, stationAngle, lambda, sharedU, threshold, lossesEnabled) {
+      const lambdaRole = (role === 'alice') ? lambda : (lambda + 90);
+      const theta = degToRad(stationAngle - lambdaRole);
+      const pPlus = Math.pow(Math.cos(theta), 2);
+
+      if (lossesEnabled) {
+        const closeness = Math.abs(pPlus - 0.5);
+        if (closeness < threshold) {
+          const failProb = 1 - (closeness / Math.max(1e-6, threshold));
+          const u = (role === 'alice') ? sharedU : (sharedU * 0.913 + 0.041) % 1.0;
+          if (u < failProb) return { detected:false, outcome:0 };
+        }
+      }
+      return { detected:true, outcome:(pPlus >= 0.5) ? 1 : -1 };
+    }
+
+    function decideOutcomesQuantum(p, angleA, angleB) {
+      if (p.partner.decided) return;
+
+      const mySpin = (Math.random() > 0.5) ? 1 : -1;
+      p.spin = mySpin;
+      p.decided = true;
+
+      const deltaRad = degToRad(angleA - angleB);
+      const k = getK();
+      const probSame = Math.pow(Math.sin((k * deltaRad) / 2), 2);
+      const isSame = Math.random() < probSame;
+
+      p.partner.spin = isSame ? mySpin : -mySpin;
+      p.partner.decided = true;
+    }
+
+    function decideOutcomesLocal(p, angleA, angleB) {
+      const model = ui.localModel.value;
+      const stationAngle = (p.role === 'alice') ? angleA : angleB;
+
+      if (model === "signcos") {
+        p.spin = localOutcome_signcos(p.role, stationAngle, p.hidden);
+        p.decided = true;
+        return;
+      }
+
+      if (model === "malus") {
+        p.spin = localOutcome_malus(p.role, stationAngle, p.hidden, p.u);
+        p.decided = true;
+        return;
+      }
+
+      if (model === "threshold") {
+        const threshold = Math.min(0.49, Math.max(0, parseFloat(ui.lossThrIn.value) || 0.10));
+        const lossesEnabled = ui.lossToggle.checked;
+        const res = localOutcome_threshold(p.role, stationAngle, p.hidden, p.u, threshold, lossesEnabled);
+        p.detected = res.detected;
+        p.spin = res.outcome;
+        p.decided = true;
+        return;
+      }
+    }
+
+    // ---------------------------
+    // Recording
+    // ---------------------------
+    function recordCoincidence(aliceSpin, bobSpin, deltaDeg) {
+      coincidencePairs++;
+
+      const key = deltaBinKey(deltaDeg);
+      const b = ensureBin(key);
+
+      if (aliceSpin === 1 && bobSpin === 1) b.npp++;
+      else if (aliceSpin === 1 && bobSpin === -1) b.npm++;
+      else if (aliceSpin === -1 && bobSpin === 1) b.nmp++;
+      else if (aliceSpin === -1 && bobSpin === -1) b.nmm++;
+
+      const prod = (aliceSpin === bobSpin) ? 1 : -1;
+      b.sum += prod;
+      b.n++;
+
+      updateBinComputed(b);
+
+      // CHSH accumulation (drives the bars)
+      if (chsh.running && chsh.accumulator) {
+        const acc = chsh.accumulator;
+        if (aliceSpin === 1 && bobSpin === 1) acc.npp++;
+        else if (aliceSpin === 1 && bobSpin === -1) acc.npm++;
+        else if (aliceSpin === -1 && bobSpin === 1) acc.nmp++;
+        else if (aliceSpin === -1 && bobSpin === -1) acc.nmm++;
+        acc.sum += prod;
+        acc.n++;
+      }
+
+      if (chsh.running) updateChshBarsLive();
+      updateTopStats();
+      updateCountsPanelForCurrentDelta();
+      drawGraph();
+    }
+
+    function getCurrentDeltaDeg() {
+      const { a, b } = getAngles();
+      return foldDelta180(a - b);
+    }
+
+    function updateChshDisplay() {
+      const r = chsh.results;
+      const fmt = (v) => (v === null || v === undefined) ? "—" : v.toFixed(3);
+
+      ui.chshTable.innerHTML =
+        `E(a,b)=${fmt(r.Eab)} &nbsp; E(a,b′)=${fmt(r.Eabp)}<br>` +
+        `E(a′,b)=${fmt(r.Eapb)} &nbsp; E(a′,b′)=${fmt(r.Eapbp)}`;
+
+      ui.sVal.textContent = (r.Sab == null) ? "—" : r.Sab.toFixed(3);
+    }
+
+    function finalizeChshIfReady() {
+      const r = chsh.results;
+      if ([r.Eab, r.Eabp, r.Eapb, r.Eapbp].some(v => v == null)) return;
+
+      const S = Math.abs(r.Eab - r.Eabp + r.Eapb + r.Eapbp);
+      r.Sab = S;
+
+      const sigs = [r.sEab, r.sEabp, r.sEapb, r.sEapbp].map(x => x ?? 0);
+      const sigmaS = Math.sqrt(sigs.reduce((acc, s) => acc + s*s, 0));
+
+      ui.sVal.textContent = S.toFixed(3);
+      ui.sSub.textContent = `σ≈${sigmaS.toFixed(3)} (N=${cfgSamples} each)`;
+      updateChshDisplay();
+    }
+
+    // ---------------------------
+    // Physics loop
+    // ---------------------------
+    function updatePhysics(dt) {
+      const angleA = parseFloat(ui.slA.value);
+      const angleB = parseFloat(ui.slB.value);
+
+      alice.rotator.rotation.z = THREE.MathUtils.degToRad(angleA);
+      bob.rotator.rotation.z   = THREE.MathUtils.degToRad(angleB);
+
+      ui.valA.innerText = angleA + "°";
+      ui.valB.innerText = angleB + "°";
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+
+        p.mesh.position.z -= SPEED_Z * dt;
+
+        if (!p.decided && p.mesh.position.z < 40 && p.mesh.position.z > -40) {
+          if (ui.qMode.checked) decideOutcomesQuantum(p, angleA, angleB);
+          else decideOutcomesLocal(p, angleA, angleB);
+
+          if (p.decided && p.detected === false) p.mesh.material = matNoDetect;
+        }
+
+        if (p.decided && p.detected !== false && p.mesh.position.z < 0) {
+          const rot = (p.role === 'alice') ? alice.rotator.rotation.z : bob.rotator.rotation.z;
+          const force = (p.spin || 0) * DEFLECT_SPEED * dt;
+          p.mesh.position.x += (-Math.sin(rot) * force);
+          p.mesh.position.y += ( Math.cos(rot) * force);
+        }
+
+        if (p.mesh.position.z <= -158) {
+          p.mesh.position.z = -157;
+
+          if (p.detected === false) {
+            p.mesh.material = matNoDetect;
+            p.mesh.scale.set(2.4, 2.4, 0.1);
+          } else {
+            p.mesh.material = (p.spin === 1) ? matHitGreen : matHitPurple;
+            p.mesh.scale.set(3.0, 3.0, 0.1);
+          }
+
+          if (!p.finished) {
+            p.finished = true;
+
+            if (p.partner.finished) {
+              const pa = (p.role === 'alice') ? p : p.partner;
+              const pb = (p.role === 'bob')   ? p : p.partner;
+
+              if (pa.detected !== false && pb.detected !== false) {
+                const delta = getCurrentDeltaDeg();
+                recordCoincidence(pa.spin, pb.spin, delta);
+              }
+            }
+          }
+
+          stuckParticles.push(p.mesh);
+          particles.splice(i, 1);
+
+          if (stuckParticles.length > 420) {
+            const old = stuckParticles.shift();
+            if (old && old.parent) old.parent.remove(old);
+          }
+        }
+      }
+    }
+
+    // ---------------------------
+    // Sweep
+    // ---------------------------
+    let isSweeping = false;
+    let sweepAngle = 0;
+    let sweepBatch = null;
+
+    function startSweep() {
+      cfgStepSize = parseInt(ui.stepIn.value, 10) || 10;
+      cfgSamples  = getCfgSamples();
+
+      clearMeasurementBlock();
+      isSweeping = true;
+      sweepPoints = [];
+      sweepAngle = 0;
+      sweepBatch = { sum: 0, n: 0 };
+
+      ui.slB.value = 0;
+
+      setOverlay(true, "SWEEPING...");
+      toggleControls(false);
+
+      chsh.results = { Eab:null, Eabp:null, Eapb:null, Eapbp:null, Sab:null };
+      ui.sVal.textContent = "—";
+      ui.sSub.textContent = "σ≈—";
+      updateChshDisplay();
+
+      drawGraph();
+    }
+
+    function stopSweep() {
+      isSweeping = false;
+      sweepBatch = null;
+      setOverlay(false);
+      toggleControls(true);
+    }
+
+    function updateSweep() {
+      if (!isSweeping) return;
+
+      if (sweepBatch && sweepBatch.n >= cfgSamples) {
+        const E = sweepBatch.sum / sweepBatch.n;
+        const sigma = sigmaFromEandN(E, sweepBatch.n);
+
+        const a = parseFloat(ui.slA.value);
+        const d = foldDelta180(a - sweepAngle);
+        const x = deltaBinKey(d);
+
+        sweepPoints.push({ x, E, sigma, n: sweepBatch.n });
+
+        sweepAngle += cfgStepSize;
+        if (sweepAngle >= 360) { stopSweep(); return; }
+
+        clearMeasurementBlock();
+        ui.slB.value = (sweepAngle % 360);
+        sweepBatch = { sum: 0, n: 0 };
+        drawGraph();
+      }
+
+      if (spawnState === 'idle') startSpawnSequence();
+    }
+
+    // ---------------------------
+    // CHSH
+    // ---------------------------
+    function applyChshPreset() {
+      const preset = ui.chshPreset.value;
+      if (preset === "max") {
+        ui.aIn.value  = 0;
+        ui.apIn.value = 45;
+        ui.bIn.value  = 22.5;
+        ui.bpIn.value = 67.5;
+      } else if (preset === "noviolation") {
+        ui.aIn.value  = 0;
+        ui.apIn.value = 90;
+        ui.bIn.value  = 45;
+        ui.bpIn.value = 135;
+      }
+    }
+
+    function startChsh() {
+      cfgSamples = getCfgSamples();
+
+      const a  = parseFloat(ui.aIn.value)  || 0;
+      const ap = parseFloat(ui.apIn.value) || 45;
+      const b  = parseFloat(ui.bIn.value)  || 22.5;
+      const bp = parseFloat(ui.bpIn.value) || 67.5;
+
+      clearMeasurementBlock();
+      binStats.clear();
+      coincidencePairs = 0;
+      updateTopStats();
+
+      chsh.running = true;
+      chsh.idx = 0;
+      chsh.seq = [
+        { name: "Eab",   a,    b,   label: "(a,b)"   },
+        { name: "Eabp",  a,    b:bp,label: "(a,b′)"  },
+        { name: "Eapb",  a:ap, b,   label: "(a′,b)"  },
+        { name: "Eapbp", a:ap, b:bp,label: "(a′,b′)" },
+      ];
+      chsh.accumulator = { npp:0, npm:0, nmp:0, nmm:0, n:0, sum:0 };
+
+      chsh.results = { Eab:null, Eabp:null, Eapb:null, Eapbp:null, Sab:null };
+      ui.sVal.textContent = "—";
+      ui.sSub.textContent = "σ≈—";
+      updateChshDisplay();
+
+      sweepPoints = [];
+
+      resetChshBars();
+
+      setOverlay(true, "CHSH RUN 1/4...");
+      toggleControls(false);
+
+      const s0 = chsh.seq[0];
+      ui.slA.value = s0.a;
+      ui.slB.value = s0.b;
+
+      drawGraph();
+    }
+
+    function stopChsh() {
+      chsh.running = false;
+      chsh.accumulator = null;
+      abortSpawnPhoton();
+
+      setOverlay(false);
+      toggleControls(true);
+
+      finalizeChshIfReady();
+      drawGraph();
+    }
+
+    function updateChsh() {
+      if (!chsh.running) return;
+
+      updateChshBarsLive();
+
+      const current = chsh.seq[chsh.idx];
+      if (!current) { stopChsh(); return; }
+
+      if (chsh.accumulator && chsh.accumulator.n >= cfgSamples) {
+        const E = chsh.accumulator.sum / chsh.accumulator.n;
+        const sigma = sigmaFromEandN(E, chsh.accumulator.n);
+
+        chsh.results[current.name] = E;
+        if (current.name === "Eab")   chsh.results.sEab   = sigma;
+        if (current.name === "Eabp")  chsh.results.sEabp  = sigma;
+        if (current.name === "Eapb")  chsh.results.sEapb  = sigma;
+        if (current.name === "Eapbp") chsh.results.sEapbp = sigma;
+
+        if (chsh.idx === 0) { ui.rowEab.classList.add('bar-done');   ui.txtEab.textContent   = `${cfgSamples}/${cfgSamples}  E=${E.toFixed(3)}`; setBar(ui.barEab, 100); }
+        if (chsh.idx === 1) { ui.rowEabp.classList.add('bar-done');  ui.txtEabp.textContent  = `${cfgSamples}/${cfgSamples}  E=${E.toFixed(3)}`; setBar(ui.barEabp, 100); }
+        if (chsh.idx === 2) { ui.rowEapb.classList.add('bar-done');  ui.txtEapb.textContent  = `${cfgSamples}/${cfgSamples}  E=${E.toFixed(3)}`; setBar(ui.barEapb, 100); }
+        if (chsh.idx === 3) { ui.rowEapbp.classList.add('bar-done'); ui.txtEapbp.textContent = `${cfgSamples}/${cfgSamples}  E=${E.toFixed(3)}`; setBar(ui.barEapbp, 100); }
+
+        const d = foldDelta180(current.a - current.b);
+        sweepPoints.push({ x: deltaBinKey(d), E, sigma, n: cfgSamples });
+
+        updateChshDisplay();
+
+        chsh.idx++;
+        if (chsh.idx >= chsh.seq.length) { stopChsh(); return; }
+
+        clearMeasurementBlock();
+        chsh.accumulator = { npp:0, npm:0, nmp:0, nmm:0, n:0, sum:0 };
+
+        const nxt = chsh.seq[chsh.idx];
+        ui.slA.value = nxt.a;
+        ui.slB.value = nxt.b;
+
+        setOverlay(true, `CHSH RUN ${chsh.idx + 1}/4...`);
+        drawGraph();
+      }
+
+      if (spawnState === 'idle') startSpawnSequence();
+    }
+
+    // ---------------------------
+    // Events
+    // ---------------------------
+    ui.fMode.addEventListener('change', () => {
+      alice.fields.visible = ui.fMode.checked;
+      bob.fields.visible = ui.fMode.checked;
+    });
+
+    ui.camLock.addEventListener('change', () => { controls.enabled = !ui.camLock.checked; });
+
+    ui.experiment.addEventListener('change', () => {
+      document.getElementById('legendQuantum').textContent =
+        (ui.experiment.value === 'photon') ? "Quantum theory (−cos 2Δ)" : "Quantum theory (−cos Δ)";
+      updateCountsPanelForCurrentDelta();
+      drawGraph();
+    });
+
+    ui.qMode.addEventListener('change', () => { ui.modeBanner.textContent = ui.qMode.checked ? "Quantum mode" : "Local HV mode"; });
+
+    ui.localModel.addEventListener('change', () => { updateCountsPanelForCurrentDelta(); drawGraph(); });
+
+    ui.binIn.addEventListener('change', () => { resetData(true); });
+
+    ui.chshPreset.addEventListener('change', () => { if (ui.chshPreset.value !== "custom") applyChshPreset(); });
+
+    const btnFire  = document.getElementById('fireBtn');
+    const btnSweep = document.getElementById('sweepBtn');
+    const btnChsh  = document.getElementById('chshBtn');
+    const btnReset = document.getElementById('resetBtn');
+    const btnView  = document.getElementById('viewBtn');
+
+    btnFire.addEventListener('pointerdown', (e) => { e.preventDefault(); isFiring = true; });
+    btnFire.addEventListener('pointerup', () => isFiring = false);
+    btnFire.addEventListener('pointerleave', () => isFiring = false);
+    btnFire.addEventListener('pointercancel', () => isFiring = false);
+
+    btnSweep.addEventListener('click', () => startSweep());
+    btnChsh.addEventListener('click', () => startChsh());
+
+    btnView.addEventListener('click', () => {
+      camera.position.copy(DEFAULT_CAM_POS);
+      controls.target.copy(DEFAULT_TARGET);
+      controls.update();
+    });
+
+    btnReset.addEventListener('click', () => resetData(false));
+
+    function resetData(keepSettings) {
+      binStats.clear();
+      sweepPoints = [];
+      emittedPairs = 0;
+      coincidencePairs = 0;
+
+      chsh.running = false;
+      chsh.idx = 0;
+      chsh.seq = [];
+      chsh.accumulator = null;
+      chsh.results = { Eab:null, Eabp:null, Eapb:null, Eapbp:null, Sab:null };
+      ui.sVal.textContent = "—";
+      ui.sSub.textContent = "σ≈—";
+      updateChshDisplay();
+
+      isSweeping = false;
+      sweepBatch = null;
+
+      setOverlay(false);
+      toggleControls(true);
+
+      abortSpawnPhoton();
+      flushInFlightParticles();
+      clearScreenHits();
+
+      if (!keepSettings) {
+        ui.slA.value = 0;
+        ui.slB.value = 45;
+      }
+
+      resetChshBars(); // keeps the labels sane after a reset
+      updateTopStats();
+      updateCountsPanelForCurrentDelta();
+      drawGraph();
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      resizeGraphCanvas();
+      drawGraph();
+    });
+
+    // ---------------------------
+    // Animation loop
+    // ---------------------------
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const dt = Math.min(0.033, clock.getDelta());
+      controls.update();
+
+      if (chsh.running) updateChsh();
+      else if (isSweeping) updateSweep();
+      else if (isFiring && spawnState === 'idle') startSpawnSequence();
+
+      updateSpawnAnimation(dt);
+      updatePhysics(dt);
+      updateCountsPanelForCurrentDelta();
+
+      renderer.render(scene, camera);
+    }
+
+    // ---------------------------
+    // Init
+    // ---------------------------
+    ui.modeBanner.textContent = ui.qMode.checked ? "Quantum mode" : "Local HV mode";
+    applyChshPreset();
+
+    resizeGraphCanvas();
+    updateTopStats();
+    updateCountsPanelForCurrentDelta();
+    resetChshBars();
+    drawGraph();
+    animate();
+  </script>
 </body>
 </html>
