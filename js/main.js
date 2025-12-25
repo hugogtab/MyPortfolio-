@@ -616,10 +616,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const heroSubtitle = $('.hero-subtitle');
     if (heroSubtitle) {
         new TypingEffect(heroSubtitle, [
-            'Creative Developer & Designer',
-            'Frontend Specialist',
-            'UI/UX Enthusiast',
-            'Problem Solver'
+            'Computational Physics & AI Researcher',
+            'Machine Learning Enthusiast',
+            'FEM & CFD Specialist',
+            'Quantum Mechanics Explorer',
+            'General Relativity Student'
         ]);
     }
 
