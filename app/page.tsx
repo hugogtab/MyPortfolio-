@@ -16,7 +16,7 @@ const focusAreas = [
   {
     title: "Physics & Quantum Systems",
     description:
-      "Placeholder for relativity, quantum mechanics, or other physics research notes."
+      "Interactive quantum mechanics experiments, Bell test simulations, and computational physics visualizations."
   }
 ];
 
@@ -31,6 +31,14 @@ const projectFilters = [
 
 const projects = [
   {
+    title: "Bell Test: Interactive Quantum Lab",
+    tag: "Quantum",
+    topics: ["Physics", "Quantum"],
+    description:
+      "3D visualization of quantum entanglement with Bell inequality tests, CHSH violations, and local hidden-variable models.",
+    link: "/bell-test"
+  },
+  {
     title: "Project Placeholder: AI Architecture Study",
     tag: "AI",
     topics: ["AI"],
@@ -43,22 +51,16 @@ const projects = [
     topics: ["FEM", "PFD Simulation"],
     description:
       "Add details about the mesh strategy, solver performance, or validation results."
-  },
-  {
-    title: "Project Placeholder: Physics Simulation",
-    tag: "Physics",
-    topics: ["Physics", "Quantum"],
-    description:
-      "Describe the simulation goal, core equations, and visualization outputs."
   }
 ];
 
 const visualizations = [
   {
-    title: "Mini Physics Simulation",
-    label: "Visualization Placeholder",
+    title: "Bell Test: Ultimate Lab",
+    label: "Interactive Quantum Experiment",
     description:
-      "Drop in a short clip or interactive snippet that demonstrates physics dynamics."
+      "Explore quantum entanglement, Bell inequalities, and the CHSH test in an immersive 3D environment.",
+    link: "/bell-test"
   },
   {
     title: "AI Architecture Diagram",
@@ -309,9 +311,18 @@ export default function Home() {
               <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
                 {item.description}
               </p>
-              <button className="mt-6 text-sm font-semibold text-cyan-600 dark:text-aurora">
-                Link placeholder →
-              </button>
+              {item.link ? (
+                <a
+                  href={item.link}
+                  className="mt-6 inline-block text-sm font-semibold text-cyan-600 dark:text-aurora"
+                >
+                  Explore Lab →
+                </a>
+              ) : (
+                <button className="mt-6 text-sm font-semibold text-cyan-600 dark:text-aurora">
+                  Link placeholder →
+                </button>
+              )}
             </article>
           ))}
         </div>
@@ -334,7 +345,7 @@ export default function Home() {
         {visualizations.map((viz) => (
           <article
             key={viz.title}
-            className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm dark:border-white/10 dark:bg-white/5"
+            className="group rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm transition hover:-translate-y-1 hover:border-slate-300 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/30"
           >
             <div className="text-xs uppercase tracking-[0.3em] text-indigo-500 dark:text-nebula">
               {viz.label}
@@ -343,11 +354,19 @@ export default function Home() {
               {viz.title}
             </h3>
             <div className="mt-4 flex h-32 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-100/80 text-xs text-slate-500 dark:border-white/20 dark:bg-white/5 dark:text-white/60">
-              Visualization placeholder
+              {viz.link ? "Interactive Experiment →" : "Visualization placeholder"}
             </div>
             <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
               {viz.description}
             </p>
+            {viz.link && (
+              <a
+                href={viz.link}
+                className="mt-6 inline-block rounded-full bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 dark:bg-nebula dark:hover:bg-indigo-500"
+              >
+                Launch Experiment
+              </a>
+            )}
           </article>
         ))}
         </div>
