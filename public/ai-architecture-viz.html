@@ -2,97 +2,2469 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Architecture Visualization</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Deep Transformer Lab: V3 + V4 (KV Cache + Training Loop + Loss Curve)</title>
+
   <style>
-    body {
-      margin: 0;
-      padding: 20px;
-      background-color: #111;
-      color: #fff;
-      font-family: 'Segoe UI', sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
+    :root{
+      --bg:#050505; --panel:#111; --text:#ddd; --muted:#777;
+      --accent:#ff0055; --math:#4f9; --cyan:#00d2ff; --warn:#ffcc00;
     }
-    .container {
-      max-width: 800px;
-      text-align: center;
+    body{ margin:0; background:var(--bg); font-family:'Segoe UI', monospace; color:var(--text); overflow:hidden; display:flex; height:100vh; }
+
+    #sidebar{ width:380px; background:var(--panel); border-right:1px solid #333; display:flex; flex-direction:column; z-index:10; }
+    #topbar{ padding:14px 14px 10px; background:#151515; border-bottom:1px solid #333; }
+    h3{ margin:0 0 10px; font-size:11px; color:#888; text-transform:uppercase; letter-spacing:1px; }
+
+    .row{ display:flex; gap:8px; align-items:center; margin:6px 0; }
+    textarea{
+      width:100%; height:64px; background:#000; border:1px solid #333; color:#fff;
+      font-family:monospace; padding:10px; box-sizing:border-box; resize:none; outline:none;
+      border-radius:6px; font-size:13px; transition:border .2s;
     }
-    h1 {
-      color: #00d4ff;
-      margin-bottom: 20px;
+    textarea:focus{ border-color:var(--accent); }
+
+    .btn{
+      background:#222; color:#bbb; border:1px solid #333; cursor:pointer; padding:7px 10px;
+      font-size:11px; text-transform:uppercase; border-radius:6px; transition:all .15s; user-select:none;
     }
-    p {
-      line-height: 1.6;
-      margin-bottom: 15px;
-      color: #aaa;
+    .btn:hover{ background:var(--accent); color:#fff; border-color:var(--accent); }
+    .btn.small{ padding:6px 8px; font-size:10px; }
+    .btn.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+    .btn.warn:hover{ background:var(--warn); border-color:var(--warn); color:#000; }
+
+    .mini{ font-size:10px; color:#777; line-height:1.35; }
+    .chip{ display:inline-block; padding:2px 6px; border:1px solid #333; border-radius:999px; color:#bbb; font-size:10px; margin-right:6px; cursor:pointer; user-select:none; }
+    .chip.on{ border-color:var(--cyan); color:#fff; }
+
+    #panel{ padding:12px 14px; border-bottom:1px solid #333; background:#0f0f0f; }
+    label{ font-size:10px; color:#888; text-transform:uppercase; letter-spacing:1px; display:block; margin-top:8px; }
+    select, input[type="range"], input[type="number"]{ width:100%; margin-top:6px; accent-color: var(--accent); }
+    select, input[type="number"]{
+      background:#000; color:#fff; border:1px solid #333; border-radius:6px; padding:6px 8px; font-family:monospace;
+      box-sizing:border-box;
     }
-    .btn {
-      display: inline-block;
-      padding: 12px 24px;
-      background: #00d4ff;
-      color: #111;
-      text-decoration: none;
-      border-radius: 4px;
-      font-weight: bold;
-      margin: 10px;
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    .hr{ height:1px; background:#222; margin:10px 0; }
+
+    #nav{ flex-grow:1; overflow:auto; }
+    .step{
+      padding:12px 14px; border-bottom:1px solid #222; cursor:pointer; transition:all .15s;
+      color:#888; display:flex; flex-direction:column;
     }
-    .btn:hover {
-      background: #00ffff;
+    .step:hover{ background:#171717; color:#fff; }
+    .step.active{ background:#1f1f1f; color:var(--accent); border-left:3px solid var(--accent); }
+    .step .title{ font-weight:bold; display:flex; justify-content:space-between; gap:10px; }
+    .step .math{ font-family:'Times New Roman', serif; font-style:italic; color:#555; font-size:12px; margin-top:4px; }
+    .step.active .math{ color:var(--math); }
+    .step .desc{ font-size:11px; color:#666; margin-top:4px; line-height:1.3; }
+
+    #stage{ flex-grow:1; position:relative; background:radial-gradient(circle at center, #1a1a1a 0%, #000 100%); }
+
+    #inspector{
+      position:absolute; bottom:24px; left:50%; transform:translateX(-50%);
+      background:rgba(10,10,10,.92); border:1px solid #333; border-radius:10px;
+      padding:14px 22px; pointer-events:none; backdrop-filter:blur(8px);
+      display:flex; flex-direction:column; align-items:center; text-align:center;
+      box-shadow:0 12px 44px rgba(0,0,0,.85); opacity:0; transition:opacity .15s; min-width:360px; z-index:20;
     }
-    .note {
-      background: rgba(0, 212, 255, 0.1);
-      border: 1px solid #00d4ff;
-      border-radius: 4px;
-      padding: 15px;
-      margin-top: 30px;
-      font-size: 0.9em;
+    #ins-title{ color:var(--accent); font-weight:bold; font-size:11px; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+    #ins-math{ color:var(--math); font-size:17px; font-family:'Times New Roman', serif; font-style:italic; margin-bottom:6px; }
+    #ins-val{ color:#fff; font-size:15px; font-family:monospace; border-top:1px solid #333; padding-top:6px; width:100%; }
+    #ins-note{ color:#888; font-size:11px; margin-top:4px; }
+
+    .tensor-label{
+      position:absolute; background:rgba(0,0,0,.85); color:#fff; border:1px solid #333;
+      padding:3px 8px; font-size:11px; border-radius:6px; pointer-events:none;
+      transform:translate(-50%,-100%); white-space:nowrap; z-index:6;
+      font-family:monospace; margin-top:-10px; box-shadow:0 2px 10px rgba(0,0,0,.5);
+      opacity:.95;
     }
+
+    #hud{
+      position:absolute; top:12px; left:12px; z-index:30;
+      display:flex; flex-direction:column; gap:8px;
+      pointer-events:none;
+    }
+    .hud-card{
+      background:rgba(0,0,0,.6); border:1px solid #333; border-radius:10px;
+      padding:10px 12px; min-width:280px;
+      pointer-events:none;
+      backdrop-filter: blur(6px);
+    }
+    .hud-title{ color:#bbb; font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+    .hud-line{ display:flex; justify-content:space-between; gap:10px; font-size:11px; color:#ddd; margin:2px 0; }
+    .hud-line span{ color:#999; }
+
+    #spark{
+      width: 260px; height: 42px; border:1px solid #222; border-radius:8px; background:rgba(0,0,0,.35);
+      margin-top:8px;
+    }
+
+    #topk{
+      position:absolute; right:12px; top:12px; z-index:30;
+      width:330px;
+      background:rgba(0,0,0,.6); border:1px solid #333; border-radius:10px;
+      padding:10px 12px;
+      backdrop-filter: blur(6px);
+    }
+    #topk .hdr{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+    #topk .hdr .t{ color:#bbb; font-size:10px; text-transform:uppercase; letter-spacing:1px; }
+    #topk .items{ display:flex; flex-direction:column; gap:6px; }
+    .bar{ display:flex; align-items:center; gap:8px; font-size:11px; }
+    .bar .w{ width:128px; color:#ddd; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .bar .p{ width:58px; color:#999; text-align:right; font-variant-numeric: tabular-nums; }
+    .bar .rail{ flex:1; height:8px; background:#111; border:1px solid #222; border-radius:999px; overflow:hidden; }
+    .bar .fill{ height:100%; background:var(--cyan); width:0%; border-radius:999px; }
+    .bar .pick{ color:var(--accent); margin-left:4px; font-size:10px; }
+
+    #toast{
+      position:absolute; left:50%; top:14px; transform:translateX(-50%);
+      z-index:40;
+      background:rgba(0,0,0,.75); border:1px solid #333; border-radius:10px;
+      padding:8px 12px; color:#ddd; font-size:11px;
+      opacity:0; transition:opacity .2s;
+      pointer-events:none;
+      backdrop-filter: blur(6px);
+    }
+    #toast b{ color:var(--cyan); }
   </style>
+
+  <script type="importmap">
+    { "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "lil-gui": "https://unpkg.com/lil-gui@0.19.1/dist/lil-gui.esm.min.js"
+    } }
+  </script>
 </head>
+
 <body>
-  <div class="container">
-    <h1>🤖 AI Architecture Visualization</h1>
-    <p>
-      Interactive visualization of AI model architecture, attention mechanisms,
-      and neural network structures.
-    </p>
+  <div id="sidebar">
+    <div id="topbar">
+      <h3>Input + Modes</h3>
+      <textarea id="user-input">Tokens flow bottom to top.</textarea>
 
-    <p>
-      <strong>Template Ready:</strong><br>
-      Replace this entire file with your custom AI architecture visualization code.
-    </p>
+      <div class="row">
+        <button class="btn small" id="fit-btn" title="Fit seq to token count">Fit</button>
+        <button class="btn small" id="forward-btn">Forward</button>
+        <button class="btn small" id="backward-btn">Backward</button>
+        <button class="btn small" id="compare-btn">Compare</button>
+        <button class="btn small warn" id="reset-btn" title="Reset weights + cache + loss curve">Reset</button>
+      </div>
 
-    <a href="/" class="btn">← Back to Portfolio</a>
+      <div class="row">
+        <div class="chip" id="chip-grads">Gradients</div>
+        <div class="chip" id="chip-cache">KV Cache</div>
+        <div class="chip" id="chip-routing">Routing</div>
+      </div>
 
-    <div class="note">
-      <strong>📝 Instructions:</strong>
-      <ol style="text-align: left; padding-left: 20px;">
-        <li>Paste your complete HTML visualization code here</li>
-        <li>Update the title in the &lt;head&gt; section</li>
-        <li>Keep the "Back to Portfolio" button or update the navigation</li>
-        <li>Add any required scripts (Three.js, D3.js, etc.)</li>
-      </ol>
+      <div class="mini">
+        <div><span class="chip on">Hover</span> inspect. <span class="chip on">Click</span> lock.</div>
+        <div><span class="chip on">Compare</span> builds left=values right=grads for the selected stage.</div>
+      </div>
+    </div>
+
+    <div id="panel">
+      <h3>Inference + Cache (V3)</h3>
+
+      <label>Inference Mode</label>
+      <select id="infer-mode">
+        <option value="full">Full Sequence</option>
+        <option value="incremental">Incremental Decode (KV Cache)</option>
+      </select>
+
+      <div class="grid2">
+        <div>
+          <label>Decode Step (t)</label>
+          <input id="decode-step" type="range" min="1" max="16" value="5"/>
+        </div>
+        <div>
+          <label>Cursor Pos (i)</label>
+          <input id="cursor-pos" type="range" min="0" max="15" value="0"/>
+        </div>
+      </div>
+
+      <label>Target Token (training label)</label>
+      <select id="target-token"></select>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="btn small" id="run-forward">Run Forward</button>
+        <button class="btn small" id="run-backward">Run Backward</button>
+        <button class="btn small" id="append-sample">Append Sample → Text</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <h3>Training Loop (V4)</h3>
+      <div class="grid2">
+        <div>
+          <label>Learning Rate</label>
+          <input id="lr" type="range" min="1" max="200" value="25"/>
+        </div>
+        <div>
+          <label>Steps / Click</label>
+          <input id="train-steps" type="number" min="1" max="200" value="10"/>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px;">
+        <button class="btn small" id="train-once">Train</button>
+        <button class="btn small" id="train-anim">Train (Animate)</button>
+      </div>
+
+      <div class="mini" style="margin-top:10px;">
+        Training is “real” for: Softmax+CE, Wu/Wo, Attention (A,V,Q,K) + LayerNorm.
+        Gradients are computed for the cursor token only (teaching demo).
+      </div>
+
+      <div class="hr"></div>
+
+      <h3>Sampling</h3>
+      <label>Top-k</label>
+      <input id="topk-k" type="range" min="1" max="10" value="5"/>
+      <label>Top-p (nucleus)</label>
+      <input id="topk-p" type="range" min="0" max="100" value="100"/>
+      <label>Temperature</label>
+      <input id="temp" type="range" min="1" max="300" value="100"/>
+
+      <div class="row" style="margin-top:8px;">
+        <button class="btn small" id="sample-btn">Sample Next</button>
+        <button class="btn small" id="greedy-btn">Greedy</button>
+      </div>
+    </div>
+
+    <div id="nav"></div>
+  </div>
+
+  <div id="stage">
+    <div id="toast"></div>
+
+    <div id="hud">
+      <div class="hud-card" id="diag-card">
+        <div class="hud-title">Diagnostics</div>
+        <div class="hud-line"><span>Mode</span><b id="diag-mode">Forward</b></div>
+        <div class="hud-line"><span>Loss</span><b id="diag-loss">—</b></div>
+        <div class="hud-line"><span>Attn Entropy</span><b id="diag-ent">—</b></div>
+        <div class="hud-line"><span>Grad Norm (Wo)</span><b id="diag-gwo">—</b></div>
+        <div class="hud-line"><span>Cache</span><b id="diag-cache">—</b></div>
+        <canvas id="spark" width="260" height="42"></canvas>
+      </div>
+    </div>
+
+    <div id="topk">
+      <div class="hdr">
+        <div class="t">Top-k (cursor token)</div>
+        <div style="color:#999; font-size:10px;" id="topk-meta">—</div>
+      </div>
+      <div class="items" id="topk-items"></div>
+    </div>
+
+    <div id="inspector">
+      <div id="ins-title"></div>
+      <div id="ins-math"></div>
+      <div id="ins-val"></div>
+      <div id="ins-note"></div>
     </div>
   </div>
 
-  <!-- YOUR CUSTOM CODE GOES HERE -->
-  <!-- Example structure:
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import GUI from 'lil-gui';
 
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+    // ============================================================
+    // Utilities
+    // ============================================================
+
+    const clamp = (x,a,b)=>Math.max(a,Math.min(b,x));
+    const now = ()=>performance.now();
+
+    const Toast = (() => {
+      let t0 = 0;
+      let msg = "";
+      const el = document.getElementById('toast');
+      function show(html, ms=1200){
+        msg = html;
+        t0 = now();
+        el.innerHTML = html;
+        el.style.opacity = '1';
+        setTimeout(()=>{
+          if(now()-t0 >= ms-20) el.style.opacity='0';
+        }, ms);
+      }
+      return { show };
+    })();
+
+    const Utils = {
+      turbo(t, out) {
+        const r = 0.1357 + t * ( 4.6153 + t * ( -42.6603 + t * ( 132.1310 + t * ( -152.9423 + t * 59.2863 ) ) ) );
+        const g = 0.0914 + t * ( 2.1941 + t * ( 4.8429 + t * ( -14.1850 + t * ( 4.2775 + t * 2.8295 ) ) ) );
+        const b = 0.1066 + t * ( 12.5938 + t * ( -39.5275 + t * ( 60.9438 + t * ( -21.4208 + t * -6.5469 ) ) ) );
+        out.setRGB(clamp(r,0,1), clamp(g,0,1), clamp(b,0,1));
+      },
+      updateIns(title, math, val, note) {
+        const ins = document.getElementById('inspector');
+        ins.style.opacity = '1';
+        document.getElementById('ins-title').innerText = title;
+        document.getElementById('ins-math').innerHTML = math;
+        document.getElementById('ins-val').innerText = val;
+        document.getElementById('ins-note').innerText = note;
+      },
+      hideIns(){ document.getElementById('inspector').style.opacity='0'; },
+
+      mulberry32(seed) {
+        let t = seed >>> 0;
+        return function() {
+          t += 0x6D2B79F5;
+          let x = Math.imul(t ^ (t >>> 15), 1 | t);
+          x ^= x + Math.imul(x ^ (x >>> 7), 61 | x);
+          return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+        };
+      },
+      stableRand(id, k) {
+        let x = (id * 2654435761) ^ (k * 374761393);
+        x = (x ^ (x >>> 13)) * 1274126177;
+        x ^= (x >>> 16);
+        return ((x >>> 0) / 4294967296);
+      }
+    };
+
+    const Tokenizer = {
+      encode(text) {
+        if(!text.trim()) return [];
+        return text.trim().split(/\s+/).map(w => {
+          let hash = 0;
+          for(let i=0; i<w.length; i++) hash = w.charCodeAt(i) + ((hash << 5) - hash);
+          return { word:w, id:(Math.abs(hash)%900)+100 };
+        });
+      },
+      makeBatches(tokens, B, S) {
+        const batches=[]; let ptr=0;
+        for(let b=0;b<B;b++){
+          const chunk=[]; let active=0;
+          for(let s=0;s<S;s++){
+            if(ptr<tokens.length){ chunk.push(tokens[ptr++]); active++; }
+            else chunk.push({word:"[PAD]", id:0});
+          }
+          batches.push({tokens:chunk, activeCount:active});
+        }
+        return batches;
+      }
+    };
+
+    // ============================================================
+    // AppState
+    // ============================================================
+
+    const AppState = {
+      // architecture
+      B: 1, S: 5, D: 16, H: 4,
+      isDecoder: true,
+
+      // modes
+      mode: "forward", // forward|backward|compare
+      showGrads: false,
+
+      // inference
+      inference: "full", // full|incremental
+      decodeT: 5,        // 1..S
+      cursorI: 0,        // 0..S-1
+
+      // sampling
+      topk: 5,
+      topp: 1.0,
+      temp: 1.0,
+      greedy: false,
+
+      // training
+      lr: 0.25,
+      trainSteps: 10,
+
+      // visuals
+      autoCube: true,
+      cubeSize: 0.25,
+      gapBatch: 0.45,
+      gapSeq: 0.08,
+      gapModel: 0.02,
+      gapHead: 0.55,
+      opacity: 0.9,
+      wireframe: true,
+
+      // selection
+      locked: null,
+
+      // toggles
+      showCache: false,
+      showRouting: false,
+
+      // target
+      targetId: null,
+    };
+
+    // ============================================================
+    // Tensor store
+    // ============================================================
+
+    class Tensor {
+      constructor(name, shape, data=null, grad=null, meta={}) {
+        this.name = name;
+        this.shape = shape;
+        this.data = data;
+        this.grad = grad;
+        this.meta = meta;
+      }
+      size() { return this.shape.reduce((a,b)=>a*b,1); }
+    }
+    class TensorStore {
+      constructor(){ this.map = new Map(); }
+      set(t){ this.map.set(t.name, t); }
+      get(name){ return this.map.get(name); }
+      has(name){ return this.map.has(name); }
+      clear(){ this.map.clear(); }
+    }
+
+    // ============================================================
+    // ComputeEngine (V3: real KV cache + append sample)
+    // ============================================================
+
+    class ComputeEngine {
+      constructor() {
+        this.tensors = new TensorStore();
+        this.weights = { Wq:null, Wk:null, Wv:null, Wo:null, Wu:null };
+
+        this.vocab = [];              // [{id, token}]
+        this.vocabIndex = new Map();  // id -> idx
+
+        this.batches = [];
+        this.lastForwardOk = false;
+
+        // cache
+        this.cache = {
+          valid: false,
+          textSig: "",
+          B:0,S:0,D:0,H:0,dk:0,
+          t: 0,              // cached length
+          k: null,           // Float32Array(B*S*H*dk) (we keep full size, fill up to t)
+          v: null,           // Float32Array(B*S*H*dk)
+          norm: null,        // Float32Array(B*S*D) cached norm to project new tokens consistently
+        };
+
+        // training history
+        this.lossHistory = [];
+      }
+
+      dk() { return Math.max(1, Math.floor(AppState.D / AppState.H)); }
+      Dqkv() { return AppState.H * this.dk(); }
+
+      _archSig() {
+        return `${AppState.B}|${AppState.S}|${AppState.D}|${AppState.H}|${AppState.isDecoder?'D':'E'}`;
+      }
+
+      rebuildWeights(force=false) {
+        const {D,H} = AppState;
+        const dk = this.dk();
+        const Dqkv = H*dk;
+
+        if(!force && this.weights.Wq && this.weights.Wk && this.weights.Wv && this.weights.Wo) return;
+
+        const seedBase = 1337 + D*17 + H*101;
+        const W = (rows, cols, seedOffset) => {
+          const r = Utils.mulberry32(seedBase + seedOffset);
+          const a = new Float32Array(rows*cols);
+          for(let i=0;i<a.length;i++) a[i] = (r()*2 - 1) * 0.35;
+          return a;
+        };
+
+        const Wq = W(D, Dqkv, 11);
+        const Wk = W(D, Dqkv, 22);
+        const Wv = W(D, Dqkv, 33);
+        const Wo = W(Dqkv, D, 44);
+
+        // Wu built in rebuildVocab
+        this.weights.Wq = Wq; this.weights.Wk = Wk; this.weights.Wv = Wv; this.weights.Wo = Wo;
+      }
+
+      rebuildVocab(tokens) {
+        const uniq = new Map();
+        for (const t of tokens) if(t.id !== 0) uniq.set(t.id, t.word);
+        const base = [{id:0, token:"[PAD]"}, {id:1, token:"[UNK]"}];
+        const fromInput = [...uniq.entries()].map(([id,word])=>({id, token:word}));
+        const dummy = [];
+        for(let i=0;i<24;i++) dummy.push({id:9000+i, token:`<tok_${i}>`});
+
+        this.vocab = [...base, ...fromInput, ...dummy];
+        this.vocabIndex = new Map(this.vocab.map((v,idx)=>[v.id, idx]));
+
+        if (AppState.targetId == null) {
+          const first = fromInput.length ? fromInput[0].id : 1;
+          AppState.targetId = first;
+        }
+
+        // if Wu missing or vocab size changed, rebuild Wu
+        const V = this.vocab.length;
+        const {D} = AppState;
+
+        const needsWu = (!this.weights.Wu) || (this.weights.Wu.length !== D*V);
+        if(needsWu){
+          const seedBase = 777 + V*13 + D*97;
+          const r = Utils.mulberry32(seedBase);
+          const Wu = new Float32Array(D*V);
+          for(let i=0;i<Wu.length;i++) Wu[i] = (r()*2 - 1) * 0.25;
+          this.weights.Wu = Wu;
+        }
+      }
+
+      _textSig(text) {
+        // include vocab-affecting view: actual tokens + arch
+        const toks = Tokenizer.encode(text);
+        const ids = toks.map(t=>t.id).join(',');
+        return `${this._archSig()}::${ids}`;
+      }
+
+      resetAll() {
+        this.weights = { Wq:null, Wk:null, Wv:null, Wo:null, Wu:null };
+        this.cache.valid = false;
+        this.cache.k = null; this.cache.v = null; this.cache.norm = null;
+        this.lossHistory = [];
+        drawSparkline([]);
+        Toast.show(`Reset <b>weights</b>, <b>cache</b>, and <b>loss curve</b>.`);
+      }
+
+      // ---------------------
+      // Forward (full or incremental cache)
+      // ---------------------
+      forward() {
+        this.lastForwardOk = false;
+
+        const {B,S,D,H,isDecoder} = AppState;
+        const dk = this.dk();
+        const Dqkv = H*dk;
+
+        const text = document.getElementById('user-input').value;
+        const toks = Tokenizer.encode(text);
+        this.batches = Tokenizer.makeBatches(toks, B, S);
+
+        // init / keep weights across forwards (training needs persistence)
+        this.rebuildWeights(false);
+        this.rebuildVocab(toks);
+
+        // indexing helpers
+        const modelIndex = (b,s,m)=>((b*S+s)*D+m);
+        const qkvIndex = (b,s,h,d)=>(((b*S+s)*H+h)*dk+d);
+        const scoreIndex = (b,h,i,j)=>(((b*H+h)*S+i)*S+j);
+        const zIndex = (b,s,t)=>((b*S+s)*Dqkv+t);
+        const logitIndex = (b,s,v)=>((b*S+s)*this.vocab.length+v);
+
+        const tEff = (AppState.inference === "incremental") ? clamp(AppState.decodeT, 1, S) : S;
+
+        // input ids
+        const input = new Int32Array(B*S);
+        for(let b=0;b<B;b++){
+          for(let s=0;s<S;s++){
+            input[b*S+s] = this.batches[b].tokens[s].id;
+          }
+        }
+
+        // embed deterministic
+        const embed = new Float32Array(B*S*D);
+        for(let b=0;b<B;b++){
+          for(let s=0;s<S;s++){
+            const id = input[b*S+s];
+            for(let m=0;m<D;m++){
+              const u = Utils.stableRand(id+17, m+31);
+              embed[modelIndex(b,s,m)] = (u*2 - 1) * 0.9;
+            }
+          }
+        }
+
+        // pe
+        const pe = new Float32Array(S*D);
+        for(let s=0;s<S;s++){
+          for(let m=0;m<D;m++){
+            pe[s*D+m] = Math.sin((s+1)*0.7 + m*0.13) * 0.35;
+          }
+        }
+
+        // sum
+        const sum = new Float32Array(B*S*D);
+        for(let b=0;b<B;b++){
+          for(let s=0;s<S;s++){
+            for(let m=0;m<D;m++){
+              sum[modelIndex(b,s,m)] = embed[modelIndex(b,s,m)] + pe[s*D+m];
+            }
+          }
+        }
+
+        // layernorm
+        const norm = new Float32Array(B*S*D);
+        const mean = new Float32Array(B*S);
+        const invStd = new Float32Array(B*S);
+        const eps = 1e-5;
+        for(let b=0;b<B;b++){
+          for(let s=0;s<S;s++){
+            let mu=0;
+            for(let m=0;m<D;m++) mu += sum[modelIndex(b,s,m)];
+            mu /= D;
+            mean[b*S+s] = mu;
+
+            let v=0;
+            for(let m=0;m<D;m++){
+              const x = sum[modelIndex(b,s,m)] - mu;
+              v += x*x;
+            }
+            v /= D;
+            invStd[b*S+s] = 1 / Math.sqrt(v + eps);
+
+            for(let m=0;m<D;m++){
+              norm[modelIndex(b,s,m)] = (sum[modelIndex(b,s,m)] - mu) * invStd[b*S+s];
+            }
+          }
+        }
+
+        // projections
+        const {Wq,Wk,Wv,Wo,Wu} = this.weights;
+        if(!Wq || !Wk || !Wv || !Wo || !Wu){
+          console.error("Weights missing:", this.weights);
+          Toast.show(`Missing weights. Hit <b>Reset</b> then <b>Forward</b>.`, 1800);
+          return;
+        }
+
+        // --- V3: KV cache behavior ---
+        // We cache K,V (and norm) up to cache.t. For incremental decode:
+        // - if same textSig and tEff increases, compute only new token's k,v
+        // - else rebuild cache from scratch for 0..tEff
+        const textSig = this._textSig(text);
+        const cacheOk =
+          this.cache.valid &&
+          this.cache.textSig === textSig &&
+          this.cache.B === B && this.cache.S === S && this.cache.D === D && this.cache.H === H && this.cache.dk === dk;
+
+        const wantCache = (AppState.inference === "incremental");
+        let cacheStatus = "OFF";
+
+        if(wantCache){
+          const needInit = !cacheOk || !this.cache.k || !this.cache.v || !this.cache.norm;
+          if(needInit){
+            this.cache.valid = true;
+            this.cache.textSig = textSig;
+            this.cache.B=B; this.cache.S=S; this.cache.D=D; this.cache.H=H; this.cache.dk=dk;
+            this.cache.t = 0;
+            this.cache.k = new Float32Array(B*S*H*dk);
+            this.cache.v = new Float32Array(B*S*H*dk);
+            this.cache.norm = new Float32Array(B*S*D);
+          }
+
+          // always refresh cached norm (small and simplifies correctness)
+          this.cache.norm.set(norm);
+
+          const prevT = this.cache.t;
+          const nextT = clamp(tEff, 1, S);
+
+          // if nextT <= prevT, no compute needed
+          // if nextT > prevT, compute new k/v rows for s in [prevT, nextT)
+          // if cache was newly initialized, prevT=0 so it computes all needed.
+          const start = prevT;
+          const end = nextT;
+
+          const projToken = (W, outArr, sIdx) => {
+            // compute for all batches b, token sIdx, all heads/dk
+            const cols = Dqkv;
+            for(let b=0;b<B;b++){
+              for(let t=0;t<cols;t++){
+                let acc=0;
+                for(let m=0;m<D;m++){
+                  acc += norm[modelIndex(b,sIdx,m)] * W[m*cols + t];
+                }
+                const h = Math.floor(t/dk);
+                const d = t % dk;
+                outArr[qkvIndex(b,sIdx,h,d)] = acc;
+              }
+            }
+          };
+
+          // q is always computed fresh (helps compare visually)
+          const q = new Float32Array(B*S*H*dk);
+          const projAllQ = () => {
+            const cols = Dqkv;
+            for(let b=0;b<B;b++){
+              for(let s=0;s<S;s++){
+                for(let t=0;t<cols;t++){
+                  let acc=0;
+                  for(let m=0;m<D;m++){
+                    acc += norm[modelIndex(b,s,m)] * Wq[m*cols + t];
+                  }
+                  const h = Math.floor(t/dk);
+                  const d = t % dk;
+                  q[qkvIndex(b,s,h,d)] = acc;
+                }
+              }
+            }
+          };
+          projAllQ();
+
+          // fill K,V cache incrementally
+          for(let sIdx=start; sIdx<end; sIdx++){
+            projToken(Wk, this.cache.k, sIdx);
+            projToken(Wv, this.cache.v, sIdx);
+          }
+          this.cache.t = end;
+
+          cacheStatus = `HIT t=${this.cache.t}`;
+          if(end > start && start > 0) cacheStatus = `HIT+EXTEND ${start}→${end}`;
+          if(start===0 && end>0) cacheStatus = `BUILD 0→${end}`;
+
+          // build visible tensors: k,v are from cache; q is computed
+          // NOTE: we still store full-sized q,k,v, but attention mask uses tEff
+          var k = new Float32Array(this.cache.k); // copy for tensor store (so training doesn't mutate cache arrays by accident)
+          var v = new Float32Array(this.cache.v);
+          // q is local const
+          var qLocal = q;
+        } else {
+          // full mode: compute q,k,v fully
+          const q = new Float32Array(B*S*H*dk);
+          const k = new Float32Array(B*S*H*dk);
+          const v = new Float32Array(B*S*H*dk);
+
+          const cols = Dqkv;
+          const proj = (W, outArr) => {
+            for(let b=0;b<B;b++){
+              for(let s=0;s<S;s++){
+                for(let t=0;t<cols;t++){
+                  let acc=0;
+                  for(let m=0;m<D;m++){
+                    acc += norm[modelIndex(b,s,m)] * W[m*cols + t];
+                  }
+                  const h = Math.floor(t/dk);
+                  const d = t % dk;
+                  outArr[qkvIndex(b,s,h,d)] = acc;
+                }
+              }
+            }
+          };
+          proj(Wq, q); proj(Wk, k); proj(Wv, v);
+
+          var qLocal = q;
+          var k = k;
+          var v = v;
+          this.cache.valid = false;
+          cacheStatus = "OFF";
+        }
+
+        document.getElementById('diag-cache').innerText = cacheStatus;
+
+        // scores (masked)
+        const scores = new Float32Array(B*H*S*S);
+        let maskedCount = 0, totalCount = B*H*S*S;
+        const invSqrtDk = 1/Math.sqrt(dk);
+
+        for(let b=0;b<B;b++){
+          const active = this.batches[b].activeCount;
+          for(let h=0;h<H;h++){
+            for(let i=0;i<S;i++){
+              for(let j=0;j<S;j++){
+                const idx = scoreIndex(b,h,i,j);
+                const masked =
+                  (i >= active) || (j >= active) ||
+                  (AppState.inference==="incremental" && (i >= tEff || j >= tEff)) ||
+                  (isDecoder && j > i);
+
+                if(masked){
+                  scores[idx] = -Infinity;
+                  maskedCount++;
+                } else {
+                  let dot=0;
+                  for(let d=0;d<dk;d++){
+                    dot += qLocal[qkvIndex(b,i,h,d)] * k[qkvIndex(b,j,h,d)];
+                  }
+                  scores[idx] = dot * invSqrtDk;
+                }
+              }
+            }
+          }
+        }
+
+        // probs
+        const probs = new Float32Array(B*H*S*S);
+        let entropySum=0, entropyN=0;
+
+        for(let b=0;b<B;b++){
+          const active = this.batches[b].activeCount;
+          for(let h=0;h<H;h++){
+            for(let i=0;i<S;i++){
+              if(i>=active || (AppState.inference==="incremental" && i>=tEff)){
+                for(let j=0;j<S;j++) probs[scoreIndex(b,h,i,j)] = 0;
+                continue;
+              }
+
+              let rowMax = -Infinity;
+              for(let j=0;j<S;j++){
+                const sVal = scores[scoreIndex(b,h,i,j)];
+                if(sVal > rowMax) rowMax = sVal;
+              }
+              if(!isFinite(rowMax)){
+                for(let j=0;j<S;j++) probs[scoreIndex(b,h,i,j)] = 0;
+                continue;
+              }
+
+              let sumExp=0;
+              for(let j=0;j<S;j++){
+                const sVal = scores[scoreIndex(b,h,i,j)];
+                if(!isFinite(sVal)){ probs[scoreIndex(b,h,i,j)] = 0; continue; }
+                const e = Math.exp(sVal - rowMax);
+                probs[scoreIndex(b,h,i,j)] = e;
+                sumExp += e;
+              }
+
+              const inv = sumExp>0 ? 1/sumExp : 0;
+              let ent=0;
+              for(let j=0;j<S;j++){
+                const p = probs[scoreIndex(b,h,i,j)] * inv;
+                probs[scoreIndex(b,h,i,j)] = p;
+                if(p>1e-12) ent += -p*Math.log(p);
+              }
+              entropySum += ent;
+              entropyN++;
+            }
+          }
+        }
+
+        // z
+        const z = new Float32Array(B*S*Dqkv);
+        for(let b=0;b<B;b++){
+          const active = this.batches[b].activeCount;
+          for(let h=0;h<H;h++){
+            for(let i=0;i<S;i++){
+              if(i>=active || (AppState.inference==="incremental" && i>=tEff)) continue;
+              for(let d=0;d<dk;d++){
+                let acc=0;
+                for(let j=0;j<S;j++){
+                  const a = probs[scoreIndex(b,h,i,j)];
+                  if(a===0) continue;
+                  acc += a * v[qkvIndex(b,j,h,d)];
+                }
+                z[zIndex(b,i,h*dk+d)] = acc;
+              }
+            }
+          }
+        }
+
+        // out
+        const out = new Float32Array(B*S*D);
+        for(let b=0;b<B;b++){
+          const active = this.batches[b].activeCount;
+          for(let s=0;s<S;s++){
+            if(s>=active || (AppState.inference==="incremental" && s>=tEff)) continue;
+            for(let m=0;m<D;m++){
+              let acc=0;
+              for(let t=0;t<Dqkv;t++){
+                acc += z[zIndex(b,s,t)] * Wo[t*D + m];
+              }
+              out[modelIndex(b,s,m)] = acc;
+            }
+          }
+        }
+
+        // logits
+        const Vsz = this.vocab.length;
+        const logits = new Float32Array(B*S*Vsz);
+        for(let b=0;b<B;b++){
+          const active = this.batches[b].activeCount;
+          for(let s=0;s<S;s++){
+            if(s>=active || (AppState.inference==="incremental" && s>=tEff)) continue;
+            for(let vIdx=0;vIdx<Vsz;vIdx++){
+              let acc=0;
+              for(let m=0;m<D;m++){
+                acc += out[modelIndex(b,s,m)] * Wu[m*Vsz + vIdx];
+              }
+              logits[logitIndex(b,s,vIdx)] = acc;
+            }
+          }
+        }
+
+        // CE loss at cursor
+        const b0=0;
+        const i = clamp(AppState.cursorI, 0, S-1);
+        const tgt = AppState.targetId ?? 1;
+        const tgtIdx = this.vocabIndex.get(tgt) ?? 1;
+
+        const probsRow = this.softmaxRowForLogits(logits, b0, i);
+        const ce = -Math.log(Math.max(1e-12, probsRow[tgtIdx]));
+
+        // store tensors
+        this.tensors.clear();
+        this.tensors.set(new Tensor("input", [B,S], input, null));
+        this.tensors.set(new Tensor("embed", [B,S,D], embed, null));
+        this.tensors.set(new Tensor("pe", [S,D], pe, null));
+        this.tensors.set(new Tensor("sum", [B,S,D], sum, null, {mean, invStd}));
+        this.tensors.set(new Tensor("norm", [B,S,D], norm, null));
+
+        this.tensors.set(new Tensor("q", [B,S,H,dk], qLocal, null));
+        this.tensors.set(new Tensor("k", [B,S,H,dk], k, null));
+        this.tensors.set(new Tensor("v", [B,S,H,dk], v, null));
+
+        // Cache views (V3): show K/V cache content and a "delta" mask
+        if(AppState.inference==="incremental"){
+          // show only cached prefix as a view tensor (values beyond tEff are zeroed for clarity)
+          const kCache = new Float32Array(B*S*H*dk);
+          const vCache = new Float32Array(B*S*H*dk);
+          const tC = this.cache.t;
+          for(let b=0;b<B;b++){
+            for(let s=0;s<tC;s++){
+              for(let h=0;h<H;h++){
+                for(let d=0;d<dk;d++){
+                  kCache[(((b*S+s)*H+h)*dk+d)] = k[(((b*S+s)*H+h)*dk+d)];
+                  vCache[(((b*S+s)*H+h)*dk+d)] = v[(((b*S+s)*H+h)*dk+d)];
+                }
+              }
+            }
+          }
+          this.tensors.set(new Tensor("k_cache", [B,S,H,dk], kCache, null, {t:tC}));
+          this.tensors.set(new Tensor("v_cache", [B,S,H,dk], vCache, null, {t:tC}));
+        } else {
+          // clear if not in incremental
+          this.tensors.set(new Tensor("k_cache", [B,S,H,dk], new Float32Array(B*S*H*dk), null, {t:0}));
+          this.tensors.set(new Tensor("v_cache", [B,S,H,dk], new Float32Array(B*S*H*dk), null, {t:0}));
+        }
+
+        this.tensors.set(new Tensor("scores", [B,H,S,S], scores, null));
+        this.tensors.set(new Tensor("probs", [B,H,S,S], probs, null));
+        this.tensors.set(new Tensor("z", [B,S,Dqkv], z, null));
+        this.tensors.set(new Tensor("out", [B,S,D], out, null));
+        this.tensors.set(new Tensor("logits", [B,S,Vsz], logits, null));
+        this.tensors.set(new Tensor("loss", [1], new Float32Array([ce]), null, {cursorI:i, tgtIdx}));
+
+        // diagnostics
+        document.getElementById('diag-loss').innerText = ce.toFixed(4);
+        document.getElementById('diag-ent').innerText = (entropyN ? (entropySum/entropyN) : 0).toFixed(3);
+        document.getElementById('diag-gwo').innerText = "—";
+
+        this.updateTopKPanel(logits, b0, i, probsRow);
+
+        this.lastForwardOk = true;
+        return ce;
+      }
+
+      softmaxRowForLogits(logits, b, s) {
+        const V = this.vocab.length;
+        const S = AppState.S;
+        const idx = (b*S + s)*V;
+
+        let mx=-Infinity;
+        for(let v=0;v<V;v++){ const x=logits[idx+v]; if(x>mx) mx=x; }
+        const exps = new Float32Array(V);
+        let sum=0;
+        for(let v=0;v<V;v++){ const e=Math.exp(logits[idx+v]-mx); exps[v]=e; sum+=e; }
+        const p = new Float32Array(V);
+        const inv = sum>0?1/sum:0;
+        for(let v=0;v<V;v++) p[v]=exps[v]*inv;
+        return p;
+      }
+
+      updateTopKPanel(logits, b, s, probsRow=null) {
+        const V = this.vocab.length;
+        if(!probsRow) probsRow = this.softmaxRowForLogits(logits,b,s);
+
+        const k = clamp(AppState.topk, 1, 10);
+        const temp = Math.max(1e-6, AppState.temp);
+
+        const adj = new Float32Array(V);
+        let sum=0;
+        for(let v=0;v<V;v++){
+          const p = Math.max(1e-20, probsRow[v]);
+          const a = Math.pow(p, 1/temp);
+          adj[v]=a; sum+=a;
+        }
+        const inv = sum>0?1/sum:0;
+        for(let v=0;v<V;v++) adj[v]*=inv;
+
+        const arr = [];
+        for(let v=0;v<V;v++) arr.push({v, p: adj[v]});
+        arr.sort((a,b)=>b.p-a.p);
+
+        let keep = [];
+        let cum=0;
+        for(const it of arr){
+          keep.push(it);
+          cum += it.p;
+          if(cum >= AppState.topp) break;
+        }
+        if(keep.length < k) keep = arr.slice(0,k);
+
+        const show = keep.slice(0,k);
+        const maxP = show.length ? show[0].p : 1;
+
+        document.getElementById('topk-meta').innerText =
+          `i=${s} • k=${k} • p=${AppState.topp.toFixed(2)} • T=${AppState.temp.toFixed(2)}`;
+
+        const root = document.getElementById('topk-items');
+        root.innerHTML = "";
+        show.forEach((it, idx) => {
+          const vItem = this.vocab[it.v];
+          const div = document.createElement('div');
+          div.className = 'bar';
+          div.innerHTML = `
+            <div class="w">${vItem.token}</div>
+            <div class="p">${(it.p*100).toFixed(2)}%</div>
+            <div class="rail"><div class="fill" style="width:${(it.p/maxP*100).toFixed(1)}%"></div></div>
+            ${idx===0?'<div class="pick">top</div>':''}
+          `;
+          root.appendChild(div);
+        });
+      }
+
+      // Sample next token from current logits (cursor row)
+      sampleNext() {
+        const logits = this.tensors.get("logits")?.data;
+        if(!logits) return null;
+
+        const b=0;
+        const i = clamp(AppState.cursorI, 0, AppState.S-1);
+        const probsRow = this.softmaxRowForLogits(logits,b,i);
+
+        const V = this.vocab.length;
+        const temp = Math.max(1e-6, AppState.temp);
+
+        const adj = new Float32Array(V);
+        let sum=0;
+        for(let v=0;v<V;v++){
+          const p = Math.max(1e-20, probsRow[v]);
+          const a = Math.pow(p, 1/temp);
+          adj[v]=a; sum+=a;
+        }
+        const inv = sum>0?1/sum:0;
+        for(let v=0;v<V;v++) adj[v]*=inv;
+
+        const arr = [];
+        for(let v=0;v<V;v++) arr.push({v, p:adj[v]});
+        arr.sort((a,b)=>b.p-a.p);
+
+        let keep = [];
+        let cum=0;
+        for(const it of arr){
+          keep.push(it);
+          cum += it.p;
+          if(cum >= AppState.topp) break;
+        }
+        const k = clamp(AppState.topk, 1, 10);
+        if(keep.length < k) keep = arr.slice(0,k);
+
+        if(AppState.greedy) return this.vocab[keep[0].v];
+
+        let total=0;
+        for(const it of keep) total += it.p;
+        let r = Math.random()*total;
+        for(const it of keep){
+          r -= it.p;
+          if(r<=0) return this.vocab[it.v];
+        }
+        return this.vocab[keep[keep.length-1].v];
+      }
+
+      // ---------------------
+      // Backward (as before, for cursor token)
+      // ---------------------
+      backward() {
+        if(!this.lastForwardOk) this.forward();
+        if(!this.lastForwardOk) return;
+
+        const {B,S,D,H} = AppState;
+        const dk = this.dk();
+        const Dqkv = H*dk;
+
+        const sumT = this.tensors.get("sum");
+        const mean = sumT.meta.mean;
+        const invStd = sumT.meta.invStd;
+
+        const norm = this.tensors.get("norm").data;
+        const q = this.tensors.get("q").data;
+        const k = this.tensors.get("k").data;
+        const v = this.tensors.get("v").data;
+        const probs = this.tensors.get("probs").data;
+        const z = this.tensors.get("z").data;
+        const out = this.tensors.get("out").data;
+        const logits = this.tensors.get("logits").data;
+
+        const {Wq,Wk,Wv,Wo,Wu} = this.weights;
+        const Vsmall = this.vocab.length;
+
+        const modelIndex = (b,s,m)=>((b*S+s)*D+m);
+        const qkvIndex = (b,s,h,d)=>(((b*S+s)*H+h)*dk+d);
+        const scoreIndex = (b,h,i,j)=>(((b*H+h)*S+i)*S+j);
+        const zIndex = (b,s,t)=>((b*S+s)*Dqkv+t);
+        const logitIndex = (b,s,vv)=>((b*S+s)*Vsmall+vv);
+
+        // allocate grads
+        const dlogits = new Float32Array(B*S*Vsmall);
+        const dout = new Float32Array(B*S*D);
+        const dWu = new Float32Array(D*Vsmall);
+
+        const dz = new Float32Array(B*S*Dqkv);
+        const dWo = new Float32Array(Dqkv*D);
+
+        const dprobs = new Float32Array(B*H*S*S);
+        const dscores = new Float32Array(B*H*S*S);
+
+        const dv = new Float32Array(B*S*H*dk);
+        const dq = new Float32Array(B*S*H*dk);
+        const dkArr = new Float32Array(B*S*H*dk);
+
+        const dWq = new Float32Array(D*(H*dk));
+        const dWk = new Float32Array(D*(H*dk));
+        const dWv = new Float32Array(D*(H*dk));
+
+        const dnorm = new Float32Array(B*S*D);
+        const dsum = new Float32Array(B*S*D);
+        const dembed = new Float32Array(B*S*D);
+        const dpe = new Float32Array(S*D);
+
+        // ---- (1) CE dlogits at cursor
+        const b0 = 0;
+        const i0 = clamp(AppState.cursorI, 0, S-1);
+        const tgt = AppState.targetId ?? 1;
+        const tgtIdx = this.vocabIndex.get(tgt) ?? 1;
+
+        const pRow = this.softmaxRowForLogits(logits, b0, i0);
+        for(let vIdx=0; vIdx<Vsmall; vIdx++){
+          const y = (vIdx === tgtIdx) ? 1 : 0;
+          dlogits[logitIndex(b0,i0,vIdx)] = pRow[vIdx] - y;
+        }
+
+        // ---- (2) logits = out·Wu
+        for(let m=0;m<D;m++){
+          for(let vIdx=0; vIdx<Vsmall; vIdx++){
+            const dl = dlogits[logitIndex(b0,i0,vIdx)];
+            dout[modelIndex(b0,i0,m)] += dl * Wu[m*Vsmall + vIdx];
+            dWu[m*Vsmall + vIdx] += out[modelIndex(b0,i0,m)] * dl;
+          }
+        }
+
+        // ---- (3) out = z·Wo
+        for(let t=0;t<Dqkv;t++){
+          for(let m=0;m<D;m++){
+            const do_m = dout[modelIndex(b0,i0,m)];
+            dz[zIndex(b0,i0,t)] += do_m * Wo[t*D + m];
+            dWo[t*D + m] += z[zIndex(b0,i0,t)] * do_m;
+          }
+        }
+
+        // ---- (4) z = A·V
+        for(let h=0;h<H;h++){
+          // dA
+          for(let j=0;j<S;j++){
+            let acc=0;
+            for(let d=0;d<dk;d++){
+              const t = h*dk + d;
+              acc += dz[zIndex(b0,i0,t)] * v[qkvIndex(b0,j,h,d)];
+            }
+            dprobs[scoreIndex(b0,h,i0,j)] = acc;
+          }
+          // dV
+          for(let j=0;j<S;j++){
+            const a = probs[scoreIndex(b0,h,i0,j)];
+            for(let d=0;d<dk;d++){
+              const t = h*dk + d;
+              dv[qkvIndex(b0,j,h,d)] += a * dz[zIndex(b0,i0,t)];
+            }
+          }
+        }
+
+        // ---- (5) softmax backward
+        for(let h=0;h<H;h++){
+          let rowDot=0;
+          for(let j=0;j<S;j++){
+            rowDot += dprobs[scoreIndex(b0,h,i0,j)] * probs[scoreIndex(b0,h,i0,j)];
+          }
+          for(let j=0;j<S;j++){
+            const Aij = probs[scoreIndex(b0,h,i0,j)];
+            dscores[scoreIndex(b0,h,i0,j)] = Aij * (dprobs[scoreIndex(b0,h,i0,j)] - rowDot);
+          }
+        }
+
+        // ---- (6) scores = QK^T / sqrt(dk)
+        const invSqrtDk = 1/Math.sqrt(dk);
+        for(let h=0;h<H;h++){
+          for(let d=0;d<dk;d++){
+            let accQ=0;
+            for(let j=0;j<S;j++){
+              const ds = dscores[scoreIndex(b0,h,i0,j)];
+              accQ += ds * k[qkvIndex(b0,j,h,d)];
+            }
+            dq[qkvIndex(b0,i0,h,d)] += accQ * invSqrtDk;
+
+            for(let j=0;j<S;j++){
+              const ds = dscores[scoreIndex(b0,h,i0,j)];
+              dkArr[qkvIndex(b0,j,h,d)] += ds * q[qkvIndex(b0,i0,h,d)] * invSqrtDk;
+            }
+          }
+        }
+
+        // ---- (7) Q,K,V = norm·W*
+        const cols = H*dk;
+        const backProj = (dQKV, W, dW, dnormAcc) => {
+          for(let b=0;b<B;b++){
+            for(let s=0;s<S;s++){
+              for(let h=0;h<H;h++){
+                for(let d=0;d<dk;d++){
+                  const t = h*dk + d;
+                  const g = dQKV[qkvIndex(b,s,h,d)];
+                  if(g===0) continue;
+                  for(let m=0;m<D;m++) dW[m*cols + t] += norm[modelIndex(b,s,m)] * g;
+                  for(let m=0;m<D;m++) dnormAcc[modelIndex(b,s,m)] += W[m*cols + t] * g;
+                }
+              }
+            }
+          }
+        };
+        backProj(dq, Wq, dWq, dnorm);
+        backProj(dkArr, Wk, dWk, dnorm);
+        backProj(dv, Wv, dWv, dnorm);
+
+        // ---- (8) LayerNorm backward
+        // Y = (X-mean)*invStd ; dX = invStd*(dY - mean(dY) - Y*mean(dY*Y))
+        for(let b=0;b<B;b++){
+          for(let s=0;s<S;s++){
+            let mdY=0, mdYY=0;
+            for(let m=0;m<D;m++){
+              const dy = dnorm[modelIndex(b,s,m)];
+              const y = norm[modelIndex(b,s,m)];
+              mdY += dy;
+              mdYY += dy * y;
+            }
+            mdY /= D; mdYY /= D;
+
+            const inv = invStd[b*S+s];
+            for(let m=0;m<D;m++){
+              const dy = dnorm[modelIndex(b,s,m)];
+              const y = norm[modelIndex(b,s,m)];
+              dsum[modelIndex(b,s,m)] = inv * (dy - mdY - y*mdYY);
+            }
+          }
+        }
+
+        // ---- (9) sum = embed + pe
+        for(let b=0;b<B;b++){
+          for(let s=0;s<S;s++){
+            for(let m=0;m<D;m++){
+              const g = dsum[modelIndex(b,s,m)];
+              dembed[modelIndex(b,s,m)] += g;
+              dpe[s*D+m] += g;
+            }
+          }
+        }
+
+        // attach grads
+        this.tensors.get("logits").grad = dlogits;
+        this.tensors.get("out").grad = dout;
+        this.tensors.get("z").grad = dz;
+        this.tensors.get("probs").grad = dprobs;
+        this.tensors.get("scores").grad = dscores;
+        this.tensors.get("q").grad = dq;
+        this.tensors.get("k").grad = dkArr;
+        this.tensors.get("v").grad = dv;
+        this.tensors.get("norm").grad = dnorm;
+        this.tensors.get("sum").grad = dsum;
+        this.tensors.get("embed").grad = dembed;
+        this.tensors.get("pe").grad = dpe;
+
+        // parameter grads as tensors (V4)
+        this.tensors.set(new Tensor("dWo", [Dqkv,D], dWo, null));
+        this.tensors.set(new Tensor("dWu", [D,Vsmall], dWu, null));
+        this.tensors.set(new Tensor("dWq", [D,cols], dWq, null));
+        this.tensors.set(new Tensor("dWk", [D,cols], dWk, null));
+        this.tensors.set(new Tensor("dWv", [D,cols], dWv, null));
+
+        // diag: grad norm Wo
+        let nrm=0;
+        for(let i=0;i<dWo.length;i++) nrm += dWo[i]*dWo[i];
+        document.getElementById('diag-gwo').innerText = Math.sqrt(nrm).toFixed(3);
+
+        AppState.showGrads = true;
+        document.getElementById('chip-grads').classList.add('on');
+      }
+
+      // ---------------------
+      // V4: SGD update for Wo + Wu (and optionally Wq/Wk/Wv)
+      // ---------------------
+      sgdStep({ lr, updateQKV=false } = {}) {
+        lr = (lr ?? AppState.lr);
+
+        // need grads
+        if(!this.lastForwardOk) this.forward();
+        this.backward();
+
+        const dWoT = this.tensors.get("dWo");
+        const dWuT = this.tensors.get("dWu");
+        if(!dWoT || !dWuT) return;
+
+        const dWo = dWoT.data;
+        const dWu = dWuT.data;
+
+        const Wo = this.weights.Wo;
+        const Wu = this.weights.Wu;
+
+        for(let i=0;i<Wo.length;i++) Wo[i] -= lr * dWo[i];
+        for(let i=0;i<Wu.length;i++) Wu[i] -= lr * dWu[i];
+
+        if(updateQKV){
+          const dWq = this.tensors.get("dWq")?.data;
+          const dWk = this.tensors.get("dWk")?.data;
+          const dWv = this.tensors.get("dWv")?.data;
+          if(dWq && dWk && dWv){
+            const Wq = this.weights.Wq, Wk = this.weights.Wk, Wv = this.weights.Wv;
+            for(let i=0;i<Wq.length;i++) Wq[i] -= lr * dWq[i];
+            for(let i=0;i<Wk.length;i++) Wk[i] -= lr * dWk[i];
+            for(let i=0;i<Wv.length;i++) Wv[i] -= lr * dWv[i];
+          }
+        }
+
+        // invalidate cache because weights changed (KV projections depend on weights)
+        this.cache.valid = false;
+
+        // new forward loss
+        const loss = this.forward();
+        if(typeof loss === "number" && isFinite(loss)){
+          this.lossHistory.push(loss);
+          if(this.lossHistory.length > 200) this.lossHistory.shift();
+          drawSparkline(this.lossHistory);
+        }
+        return loss;
       }
     }
-  </script>
 
-  <script type="module">
-    // Your JavaScript code here
-  </script>
+    const Engine = new ComputeEngine();
 
-  -->
+    // ============================================================
+    // Rendering
+    // ============================================================
+
+    const scene = new THREE.Scene();
+    const stage = document.getElementById('stage');
+    const camera = new THREE.PerspectiveCamera(45, stage.clientWidth/stage.clientHeight, 0.1, 3000);
+    camera.position.set(36, 26, 36);
+
+    const renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
+    renderer.setSize(stage.clientWidth, stage.clientHeight);
+    stage.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    // Fit camera to visible voxels (CG center)
+    function fitViewToVisibleVoxels({ padding = 1.25, smooth = false } = {}) {
+      const mins = new THREE.Vector3(+Infinity, +Infinity, +Infinity);
+      const maxs = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+      const sum  = new THREE.Vector3(0, 0, 0);
+      let count = 0;
+
+      const half = (blk) => (blk._cubeSize ?? 0.25) * 0.5;
+
+      for (const blk of Object.values(Blocks)) {
+        if (!blk || !blk.group?.visible || !blk.voxels?.length) continue;
+        const h = half(blk);
+        const gp = blk.group.position;
+
+        for (const v of blk.voxels) {
+          const p = new THREE.Vector3(v.x, v.y, v.z).add(gp);
+          mins.min(new THREE.Vector3(p.x - h, p.y - h, p.z - h));
+          maxs.max(new THREE.Vector3(p.x + h, p.y + h, p.z + h));
+          sum.add(p);
+          count++;
+        }
+      }
+
+      if (count === 0) return;
+
+      const center = sum.multiplyScalar(1 / count);
+      const size = new THREE.Vector3().subVectors(maxs, mins);
+      const radius = 0.5 * size.length() * padding;
+
+      const oldTarget = controls.target.clone();
+      const fov = THREE.MathUtils.degToRad(camera.fov);
+      const aspect = camera.aspect;
+
+      const fitHeightDist = radius / Math.sin(fov / 2);
+      const halfVert = Math.tan(fov / 2);
+      const halfHoriz = halfVert * aspect;
+      const horizFov = 2 * Math.atan(halfHoriz);
+      const fitWidthDist = radius / Math.sin(horizFov / 2);
+      const dist = Math.max(fitHeightDist, fitWidthDist);
+
+      const dir = new THREE.Vector3().subVectors(camera.position, oldTarget).normalize();
+      if (!isFinite(dir.x) || dir.lengthSq() < 1e-8) dir.set(1, 1, 1).normalize();
+
+      const newPos = center.clone().add(dir.multiplyScalar(dist));
+
+      camera.near = Math.max(0.01, dist / 100);
+      camera.far  = dist * 100;
+      camera.updateProjectionMatrix();
+
+      if (!smooth) {
+        controls.target.copy(center);
+        camera.position.copy(newPos);
+        controls.update();
+        return;
+      }
+
+      const startTarget = oldTarget.clone();
+      const startPos = camera.position.clone();
+      const endTarget = center.clone();
+      const endPos = newPos.clone();
+
+      let t = 0;
+      const tick = () => {
+        t = Math.min(1, t + 0.06);
+        const k = t * t * (3 - 2 * t); // smoothstep
+        controls.target.lerpVectors(startTarget, endTarget, k);
+        camera.position.lerpVectors(startPos, endPos, k);
+        controls.update();
+        if (t < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    class TensorView {
+      constructor(name, tensorName, layout, label, opts={}) {
+        this.name = name;
+        this.tensorName = tensorName;
+        this.layout = layout;  // FLAT | STD | PE | QKV | ATTN | Z | LOGITS | PARAM
+        this.labelStr = label;
+        this.opts = opts;
+
+        this.group = new THREE.Group();
+        this.domLabel = document.createElement('div');
+        this.domLabel.className = 'tensor-label';
+        this.domLabel.innerText = label;
+        stage.appendChild(this.domLabel);
+
+        this.sleeve = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,1)),
+          new THREE.LineBasicMaterial({ color: 0xffffff })
+        );
+        this.sleeve.visible = false;
+        this.group.add(this.sleeve);
+
+        scene.add(this.group);
+
+        this.mesh = null;
+        this.wMesh = null;
+        this.voxels = [];
+        this._cubeSize = 0.25;
+      }
+
+      dispose(){
+        scene.remove(this.group);
+        this.domLabel.remove();
+        if(this.mesh){ this.mesh.geometry.dispose(); this.mesh.material.dispose(); }
+        if(this.wMesh){ this.wMesh.geometry.dispose(); this.wMesh.material.dispose(); }
+      }
+
+      getCubeSize() {
+        const {B,S,D,H} = AppState;
+        const maxDim = Math.max(B,S,D,H,16);
+        if(AppState.autoCube) return clamp(12/maxDim*0.25, 0.07, 0.28);
+        return AppState.cubeSize;
+      }
+
+      build() {
+        const t = Engine.tensors.get(this.tensorName);
+        if(!t) return;
+
+        // clear old
+        if(this.mesh){ this.group.remove(this.mesh); this.mesh.geometry.dispose(); this.mesh.material.dispose(); this.mesh=null; }
+        if(this.wMesh){ this.group.remove(this.wMesh); this.wMesh.geometry.dispose(); this.wMesh.material.dispose(); this.wMesh=null; }
+        this.voxels = [];
+
+        const C = this.getCubeSize();
+        this._cubeSize = C;
+
+        const sB = C*(1+AppState.gapBatch);
+        const sS = C*(1+AppState.gapSeq);
+        const sM = C*(1+AppState.gapModel);
+
+        const H = AppState.H;
+        const dk = Engine.dk();
+
+        const add = (coords,x,y,z) => {
+          const val = this.readVal(coords);
+          this.voxels.push({coords,x,y,z,val});
+        };
+
+        // layout rules
+        if(this.layout === "FLAT") { // (B,S)
+          const [B2,S2] = t.shape;
+          const wX=(B2-1)*sB, wY=(S2-1)*sS;
+          for(let b=0;b<B2;b++) for(let s=0;s<S2;s++){
+            add([b,s], b*(sB+1)-wX/2, s*sS-wY/2, 0);
+          }
+        }
+        else if(this.layout === "STD") { // (B,S,D)
+          const [B2,S2,D2] = t.shape;
+          const wX=(B2-1)*sB, wY=(S2-1)*sS, wZ=(D2-1)*sM;
+          for(let b=0;b<B2;b++){
+            const bOff = b*(sB + sM*D2/2);
+            for(let s=0;s<S2;s++) for(let m=0;m<D2;m++){
+              add([b,s,m], bOff-wX/2, s*sS-wY/2, m*sM-wZ/2);
+            }
+          }
+        }
+        else if(this.layout === "PE") { // (S,D)
+          const [S2,D2] = t.shape;
+          const wY=(S2-1)*sS, wZ=(D2-1)*sM;
+          for(let s=0;s<S2;s++) for(let m=0;m<D2;m++){
+            add([s,m], 0, s*sS-wY/2, m*sM-wZ/2);
+          }
+        }
+        else if(this.layout === "QKV") { // (B,S,H,dk)
+          const [B2,S2,H2,dk2] = t.shape;
+          const hStep = dk2*sM*(1 + AppState.gapHead);
+          for(let b=0;b<B2;b++){
+            const bOff = b*(sB + sM*AppState.D);
+            for(let s=0;s<S2;s++) for(let h=0;h<H2;h++) for(let d=0;d<dk2;d++){
+              const hZ = h*hStep - ((H2-1)*hStep)/2;
+              add([b,s,h,d], bOff, s*sS-(S2*sS)/2, d*sM + hZ - (dk2*sM)/2);
+            }
+          }
+        }
+        else if(this.layout === "ATTN") { // (B,H,S,S)
+          const [B2,H2,S2,S3] = t.shape;
+          const gridW = S2*sS;
+          const hStep = gridW + C*1.5 + (AppState.gapHead*gridW);
+          for(let b=0;b<B2;b++){
+            const bOff = b*(hStep*H2 + C*4);
+            for(let h=0;h<H2;h++){
+              const hOffZ = h*hStep - ((H2-1)*hStep)/2;
+              for(let i=0;i<S2;i++) for(let j=0;j<S3;j++){
+                add([b,h,i,j], bOff, i*sS-(S2*sS)/2, j*sS-(S3*sS)/2 + hOffZ);
+              }
+            }
+          }
+        }
+        else if(this.layout === "Z") { // (B,S,Dqkv)
+          const [B2,S2,Dqkv2] = t.shape;
+          const wX=(B2-1)*sB, wY=(S2-1)*sS, wZ=(Dqkv2-1)*sM;
+          for(let b=0;b<B2;b++){
+            const bOff = b*(sB + sM*Dqkv2/2);
+            for(let s=0;s<S2;s++) for(let m=0;m<Dqkv2;m++){
+              add([b,s,m], bOff-wX/2, s*sS-wY/2, m*sM-wZ/2);
+            }
+          }
+        }
+        else if(this.layout === "LOGITS") { // (B,S,V) -> show as (S,V) matrix for b=0
+          const [B2,S2,V2] = t.shape;
+          const Vcap = this.opts.Vcap ?? Math.min(40, V2);
+          const wX=(Vcap-1)*sS, wY=(S2-1)*sS;
+          const b = 0;
+
+          for(let s=0;s<S2;s++){
+            for(let vIdx=0; vIdx<Vcap; vIdx++){
+              add([b,s,vIdx], vIdx*sS - wX/2, s*sS - wY/2, 0);
+            }
+          }
+        }
+        else if(this.layout === "PARAM") { // (R,C) show as matrix
+          const [R,C2] = t.shape;
+          const Ccap = this.opts.Ccap ?? Math.min(48, C2);
+          const Rcap = this.opts.Rcap ?? Math.min(32, R);
+          const wX=(Ccap-1)*sS, wY=(Rcap-1)*sS;
+          for(let r=0;r<Rcap;r++){
+            for(let c=0;c<Ccap;c++){
+              add([r,c], c*sS - wX/2, r*sS - wY/2, 0);
+            }
+          }
+        }
+
+        const geo = new THREE.BoxGeometry(C,C,C);
+        const mat = new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity: AppState.opacity });
+        this.mesh = new THREE.InstancedMesh(geo, mat, this.voxels.length);
+
+        const dum = new THREE.Object3D();
+        const col = new THREE.Color();
+
+        for(let i=0;i<this.voxels.length;i++){
+          const v = this.voxels[i];
+          dum.position.set(v.x,v.y,v.z);
+          dum.updateMatrix();
+          this.mesh.setMatrixAt(i, dum.matrix);
+
+          this.colorize(v.val, col, v.coords);
+          this.mesh.setColorAt(i, col);
+        }
+
+        this.group.add(this.mesh);
+
+        if(AppState.wireframe && this.voxels.length < 10000){
+          const wMat = new THREE.MeshBasicMaterial({ color:0x000000, wireframe:true, opacity:0.15, transparent:true });
+          this.wMesh = new THREE.InstancedMesh(geo, wMat, this.voxels.length);
+          this.wMesh.instanceMatrix = this.mesh.instanceMatrix;
+          this.group.add(this.wMesh);
+        }
+      }
+
+      readVal(coords) {
+        const t = Engine.tensors.get(this.tensorName);
+        if(!t) return 0;
+
+        const useGrad = (AppState.mode === "backward") || (AppState.mode === "compare" && AppState.showGrads);
+        const arr = useGrad ? (t.grad ?? null) : t.data;
+        if(!arr) return 0;
+
+        if(t.shape.length === 1) return arr[coords[0] ?? 0] ?? 0;
+
+        let idx=0;
+        for(let i=0;i<t.shape.length;i++){
+          idx = idx*t.shape[i] + coords[i];
+        }
+        return arr[idx] ?? 0;
+      }
+
+      colorize(val, col, coords) {
+        if(!isFinite(val)){
+          col.setRGB(0.02,0.02,0.02);
+          return;
+        }
+
+        const isGrad = (AppState.mode === "backward") || (AppState.mode === "compare" && AppState.showGrads);
+
+        if(this.tensorName === "input"){
+          col.setHSL(0,0, val>0 ? 0.55 : 0.12);
+          return;
+        }
+
+        if(this.tensorName === "probs"){
+          Utils.turbo(clamp(val,0,1), col);
+          return;
+        }
+
+        if(this.tensorName === "scores"){
+          const s = 1/(1+Math.exp(-val));
+          col.setRGB(s, s*0.2, s*0.55);
+          return;
+        }
+
+        if(this.tensorName === "logits"){
+          // show relative intensity; logits can be wide
+          const s = 1/(1+Math.exp(-val*0.6));
+          col.setRGB(0.1 + 0.9*s, 0.1, 0.25 + 0.7*s);
+          return;
+        }
+
+        if(this.tensorName === "k_cache" || this.tensorName === "v_cache"){
+          // dimly show cache, brighter for filled prefix
+          const t = Engine.tensors.get(this.tensorName);
+          const tLen = t?.meta?.t ?? 0;
+          const sIdx = coords[1];
+          const filled = (sIdx < tLen);
+          const a = clamp(Math.abs(val), 0, 1);
+          if(!filled){
+            col.setRGB(0.06,0.06,0.06);
+          } else {
+            col.setRGB(0.1 + 0.7*a, 0.15 + 0.25*a, 0.2 + 0.6*a);
+          }
+          return;
+        }
+
+        if(isGrad){
+          const a = clamp(Math.abs(val), 0, 1);
+          col.setRGB(a, 0.15, 0.25 + a*0.6);
+          return;
+        }
+
+        Utils.turbo(clamp((val+2)/4, 0, 1), col);
+      }
+
+      setVisible(on){
+        this.group.visible = on;
+        this.domLabel.style.display = on ? 'block' : 'none';
+      }
+
+      setPosition(x,y,z=0){
+        this.group.position.set(x,y,z);
+      }
+
+      updateLabel(){
+        if(!this.group.visible) return;
+        const v = this.group.position.clone();
+        v.y += 3;
+        v.project(camera);
+        this.domLabel.style.left = `${(v.x*.5+.5)*stage.clientWidth}px`;
+        this.domLabel.style.top  = `${(v.y*-.5+.5)*stage.clientHeight}px`;
+        this.domLabel.style.opacity = (Math.abs(v.z) > 1) ? 0 : 1;
+      }
+
+      intersect(ray){
+        if(!this.group.visible || !this.mesh) return null;
+        const hits = ray.intersectObject(this.mesh);
+        if(!hits.length) return null;
+        const id = hits[0].instanceId;
+        const v = this.voxels[id];
+        return {block:this, id, coords:v.coords, val:v.val, local:{x:v.x,y:v.y,z:v.z}};
+      }
+
+      highlightGroup(hit){
+        const targets = [];
+        if(this.layout === "STD"){
+          const [b,s] = hit.coords;
+          for(const v of this.voxels) if(v.coords[0]===b && v.coords[1]===s) targets.push(v);
+        }
+        else if(this.layout === "QKV"){
+          const [b,s,h] = hit.coords;
+          for(const v of this.voxels) if(v.coords[0]===b && v.coords[1]===s && v.coords[2]===h) targets.push(v);
+        }
+        else if(this.layout === "ATTN"){
+          const [b,h,i] = hit.coords;
+          for(const v of this.voxels) if(v.coords[0]===b && v.coords[1]===h && v.coords[2]===i) targets.push(v);
+        }
+        else if(this.layout === "PE"){
+          const [s] = hit.coords;
+          for(const v of this.voxels) if(v.coords[0]===s) targets.push(v);
+        }
+        else if(this.layout === "LOGITS"){
+          const [b,s] = hit.coords;
+          for(const v of this.voxels) if(v.coords[0]===b && v.coords[1]===s) targets.push(v);
+        }
+
+        const C = this.getCubeSize();
+        if(targets.length){
+          let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity,minZ=Infinity,maxZ=-Infinity;
+          for(const t of targets){
+            minX=Math.min(minX,t.x); maxX=Math.max(maxX,t.x);
+            minY=Math.min(minY,t.y); maxY=Math.max(maxY,t.y);
+            minZ=Math.min(minZ,t.z); maxZ=Math.max(maxZ,t.z);
+          }
+          this.sleeve.position.set((minX+maxX)/2,(minY+maxY)/2,(minZ+maxZ)/2);
+          this.sleeve.scale.set(maxX-minX+C, maxY-minY+C, maxZ-minZ+C);
+        } else {
+          this.sleeve.position.set(hit.local.x, hit.local.y, hit.local.z);
+          this.sleeve.scale.set(C,C,C);
+        }
+        this.sleeve.visible = true;
+      }
+
+      hideHighlight(){ this.sleeve.visible=false; }
+    }
+
+    // ============================================================
+    // Blocks (V3 adds cache blocks; V4 adds param-grad blocks)
+    // ============================================================
+
+    const Blocks = {
+      input:    new TensorView("input",    "input",    "FLAT",  "Input IDs"),
+      embed:    new TensorView("embed",    "embed",    "STD",   "Embedding"),
+      pe:       new TensorView("pe",       "pe",       "PE",    "Pos Enc"),
+      sum:      new TensorView("sum",      "sum",      "STD",   "Sum"),
+      norm:     new TensorView("norm",     "norm",     "STD",   "LayerNorm"),
+      q:        new TensorView("q",        "q",        "QKV",   "Query"),
+      k:        new TensorView("k",        "k",        "QKV",   "Key"),
+      v:        new TensorView("v",        "v",        "QKV",   "Value"),
+      k_cache:  new TensorView("k_cache",  "k_cache",  "QKV",   "K Cache (prefix)"),
+      v_cache:  new TensorView("v_cache",  "v_cache",  "QKV",   "V Cache (prefix)"),
+      scores:   new TensorView("scores",   "scores",   "ATTN",  "Scores"),
+      probs:    new TensorView("probs",    "probs",    "ATTN",  "Softmax A"),
+      z:        new TensorView("z",        "z",        "Z",     "Z = A·V (concat heads)"),
+      out:      new TensorView("out",      "out",      "STD",   "Output"),
+      logits:   new TensorView("logits",   "logits",   "LOGITS","Logits (S×V)", {Vcap: 40}),
+      dWo:      new TensorView("dWo",      "dWo",      "PARAM", "∂L/∂Wo (slice)", {Rcap: 32, Ccap: 32}),
+      dWu:      new TensorView("dWu",      "dWu",      "PARAM", "∂L/∂Wu (slice)", {Rcap: 32, Ccap: 32}),
+    };
+
+    // Expanded steps (V3/V4)
+    const Steps = [
+      {key:"input",  title:"1. Input Tokens",       math:"T \\in \\mathbb{R}^{B\\times S}", desc:"Token IDs (with PAD)."},
+      {key:"embed",  title:"2. Embed + PE",         math:"X_0=E(T)+PE", desc:"Dense vectors + positional encoding."},
+      {key:"norm",   title:"3. LayerNorm",          math:"X_1=LN(X_0)", desc:"Per-token normalize (mean/var)."},
+      {key:"qkv",    title:"4. Q/K/V",              math:"Q,K,V=X_1W",  desc:"Per-head projections (B,S,H,dk)."},
+      {key:"cache",  title:"5. KV Cache (V3)",      math:"K,V \\text{ cached up to } t", desc:"Incremental decode: reuse previous K,V."},
+      {key:"scores", title:"6. Scores",             math:"S=QK^T/\\sqrt{d_k}", desc:"Similarity matrix with masking."},
+      {key:"probs",  title:"7. Softmax A",          math:"A=softmax(S)", desc:"Row-wise distribution; sums to 1."},
+      {key:"z",      title:"8. Z=A·V",              math:"Z=A\\cdot V", desc:"Mix values into new vectors."},
+      {key:"out",    title:"9. Output",             math:"Y=ZW_O",      desc:"Projection back to model space."},
+      {key:"logits", title:"10. Logits",            math:"\\ell = YW_u", desc:"Scores for each vocab item."},
+      {key:"train",  title:"11. Param Grads (V4)",  math:"\\nabla W_o, \\nabla W_u", desc:"SGD updates move logits to fit target."},
+    ];
+
+    let CurrentStep = 0;
+
+    function buildSidebarSteps(){
+      const nav = document.getElementById('nav');
+      nav.innerHTML = "";
+      Steps.forEach((s, idx)=>{
+        const div = document.createElement('div');
+        div.className = 'step';
+        div.innerHTML = `
+          <div class="title"><span>${s.title}</span><span style="color:#555">#${idx+1}</span></div>
+          <div class="math">${s.math}</div>
+          <div class="desc">${s.desc}</div>
+        `;
+        div.onclick = ()=> setStep(idx);
+        nav.appendChild(div);
+      });
+    }
+
+    // ============================================================
+    // Layout + step scene
+    // ============================================================
+
+    function setStep(idx){
+      CurrentStep = idx;
+      document.querySelectorAll('.step').forEach((el,i)=>el.classList.toggle('active', i===idx));
+
+      // hide all
+      Object.values(Blocks).forEach(b=>{ b.setVisible(false); b.hideHighlight(); });
+
+      const bY = -16, gY=8, gX=16;
+
+      const show = (id, x,y)=> {
+        const blk = Blocks[id];
+        if(!blk) return;
+        blk.setVisible(true);
+        blk.setPosition(x,y,0);
+        blk.build();
+      };
+
+      const key = Steps[idx].key;
+
+      // Compare: left values, right grads for stage group
+      const compareBuild = (ids, leftPos, rightPos) => {
+        const prev = AppState.showGrads;
+
+        AppState.showGrads = false;
+        for(const id of ids) show(id, leftPos[id][0], leftPos[id][1]);
+
+        AppState.showGrads = true;
+        for(const id of ids) show(id, rightPos[id][0], rightPos[id][1]);
+
+        AppState.showGrads = prev;
+      };
+
+      if(AppState.mode === "compare"){
+        if(key==="scores" || key==="probs"){
+          compareBuild(
+            ["scores","probs"],
+            {scores:[-gX, bY], probs:[-gX, bY+gY]},
+            {scores:[ gX, bY], probs:[ gX, bY+gY]}
+          );
+        } else if(key==="qkv" || key==="cache"){
+          compareBuild(
+            ["q","k","v"],
+            {q:[-gX, bY], k:[0, bY], v:[gX, bY]},
+            {q:[-gX, bY+gY], k:[0, bY+gY], v:[gX, bY+gY]}
+          );
+        } else if(key==="logits"){
+          compareBuild(
+            ["logits"],
+            {logits:[-gX*0.8, bY]},
+            {logits:[ gX*0.8, bY]}
+          );
+        } else if(key==="train"){
+          compareBuild(
+            ["dWo","dWu"],
+            {dWo:[-gX*0.8, bY], dWu:[ gX*0.8, bY]},
+            {dWo:[-gX*0.8, bY+gY], dWu:[ gX*0.8, bY+gY]}
+          );
+        } else {
+          compareBuild(
+            ["sum","norm","out"],
+            {sum:[-gX, bY], norm:[0, bY], out:[gX, bY]},
+            {sum:[-gX, bY+gY], norm:[0, bY+gY], out:[gX, bY+gY]}
+          );
+        }
+        fitViewToVisibleVoxels({ padding: 1.35, smooth: true });
+        return;
+      }
+
+      // forward/backward storyboard (same blocks; backward toggles AppState.showGrads automatically)
+      if(key==="input"){
+        show("input", 0, bY);
+      }
+      else if(key==="embed"){
+        show("input", -gX, bY);
+        show("embed", 0, bY);
+        show("pe", gX, bY);
+        show("sum", 0, bY+gY*1.2);
+      }
+      else if(key==="norm"){
+        show("sum", 0, bY);
+        show("norm", 0, bY+gY);
+      }
+      else if(key==="qkv"){
+        show("norm", 0, bY);
+        show("q", -gX, bY+gY);
+        show("k", 0, bY+gY);
+        show("v", gX, bY+gY);
+      }
+      else if(key==="cache"){
+        // V3: show cache blocks (only meaningful in incremental)
+        show("k_cache", -gX, bY);
+        show("v_cache",  gX, bY);
+        show("q", 0, bY+gY*1.1);
+      }
+      else if(key==="scores"){
+        show("q", -gX/2, bY);
+        show("k", gX/2, bY);
+        show("scores", 0, bY+gY*1.2);
+      }
+      else if(key==="probs"){
+        show("scores", -gX/2, bY);
+        show("probs", gX/2, bY);
+      }
+      else if(key==="z"){
+        show("probs", -gX/2, bY);
+        show("v", gX/2, bY);
+        show("z", 0, bY+gY*1.2);
+      }
+      else if(key==="out"){
+        show("z", 0, bY);
+        show("out", 0, bY+gY);
+      }
+      else if(key==="logits"){
+        show("out", 0, bY);
+        show("logits", 0, bY+gY);
+      }
+      else if(key==="train"){
+        // V4: param grads
+        show("dWo", -gX*0.75, bY);
+        show("dWu",  gX*0.75, bY);
+      }
+
+      fitViewToVisibleVoxels({ padding: 1.35, smooth: true });
+    }
+
+    // ============================================================
+    // Interaction + routing lines
+    // ============================================================
+
+    const LineMgr = {
+      lines: [],
+      add(p1,p2){
+        const geo = new THREE.BufferGeometry().setFromPoints([p1,p2]);
+        const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color:0x44ff99, transparent:true, opacity:0.65 }));
+        scene.add(line);
+        this.lines.push(line);
+      },
+      clear(){
+        for(const l of this.lines){ l.geometry.dispose(); l.material.dispose(); scene.remove(l); }
+        this.lines = [];
+      }
+    };
+
+    function pick(e){
+      const r = stage.getBoundingClientRect();
+      mouse.x = ((e.clientX-r.left)/r.width)*2 - 1;
+      mouse.y = -((e.clientY-r.top)/r.height)*2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+
+      let hit=null;
+      for(const b of Object.values(Blocks)){
+        if(!hit){
+          const h = b.intersect(raycaster);
+          if(h) hit = h;
+        }
+      }
+      return hit;
+    }
+
+    function tokenWord(b,s){
+      const batch = Engine.batches[b];
+      return batch?.tokens[s]?.word ?? "?";
+    }
+
+    function updateInspector(hit){
+      const name = hit.block.tensorName;
+      const val = hit.val;
+
+      const isGrad = (AppState.mode==="backward") || (AppState.mode==="compare" && AppState.showGrads);
+      const tag = isGrad ? "∂L/∂" : "";
+
+      if(name==="input"){
+        const [b,s] = hit.coords;
+        const w = tokenWord(b,s);
+        Utils.updateIns("Input Token", `Token "${w}"`, String(val|0), `Coords [b=${b}, s=${s}]`);
+        return;
+      }
+      if(name==="pe"){
+        const [s,m] = hit.coords;
+        Utils.updateIns(`${tag}PE`, `PE_{pos=${s}, m=${m}}`, val.toFixed(6), `Broadcast across batches`);
+        return;
+      }
+      if(name==="scores" || name==="probs"){
+        const [b,h,i,j] = hit.coords;
+        const wi = tokenWord(b,i), wj = tokenWord(b,j);
+        if(!isFinite(val)){
+          Utils.updateIns(`${tag}${name.toUpperCase()}`, `masked`, `masked`, `b=${b} h=${h} i=${i} j=${j}`);
+        } else {
+          if(name==="scores"){
+            Utils.updateIns(`${tag}Score`, `q("${wi}")·k("${wj}")/√d_k`, val.toFixed(6), `b=${b} h=${h} i=${i} j=${j}`);
+          } else {
+            // row sum readout
+            const t = Engine.tensors.get("probs");
+            const A = isGrad ? (t.grad ?? null) : t.data;
+            const S = AppState.S;
+            let rowSum=0;
+            if(A){
+              for(let jj=0;jj<S;jj++){
+                rowSum += A[(((b*AppState.H+h)*S+i)*S+jj)];
+              }
+            }
+            Utils.updateIns(`${tag}A`, `A_{i→j} (row softmax)`, val.toFixed(6), `i="${wi}" → j="${wj}" • rowΣ=${rowSum.toFixed(4)}`);
+          }
+        }
+        return;
+      }
+
+      if(name==="logits"){
+        const [b,s,vIdx] = hit.coords;
+        const tok = Engine.vocab[vIdx]?.token ?? "?";
+        Utils.updateIns(`${tag}logit`, `ℓ[s=${s}, token="${tok}"]`, val.toFixed(6), `vIdx=${vIdx}`);
+        return;
+      }
+
+      if(name==="k_cache" || name==="v_cache"){
+        const [b,s,h,d] = hit.coords;
+        const tC = Engine.tensors.get(name)?.meta?.t ?? 0;
+        const filled = s < tC ? "cached" : "empty";
+        Utils.updateIns(`${tag}${name}`, `cache[ s=${s} ] = ${filled}`, val.toFixed(6), `b=${b} h=${h} d=${d} • t=${tC}`);
+        return;
+      }
+
+      if(name==="dWo" || name==="dWu"){
+        const [r,c] = hit.coords;
+        Utils.updateIns(`${name}`, `paramGrad[r=${r}, c=${c}]`, val.toFixed(6), `SGD uses these to update weights`);
+        return;
+      }
+
+      const coordsStr = hit.coords.join(",");
+      Utils.updateIns(`${tag}${name}`, `coords=[${coordsStr}]`, isFinite(val)?val.toFixed(6):"masked", "");
+    }
+
+    function drawDeps(hit){
+      LineMgr.clear();
+      if(!hit) return;
+
+      const base = hit.block.sleeve.position.clone().add(hit.block.group.position);
+
+      const find = (blockName, matchFn) => {
+        const blk = Blocks[blockName];
+        if(!blk || !blk.group.visible) return;
+        const target = blk.voxels.find(v => matchFn(v.coords, hit.coords));
+        if(!target) return;
+        LineMgr.add(base, new THREE.Vector3(target.x,target.y,target.z).add(blk.group.position));
+      };
+
+      const n = hit.block.tensorName;
+
+      if(n==="sum"){
+        find("embed", (c,h)=> c[0]===h[0] && c[1]===h[1]);
+        find("pe",    (c,h)=> c[0]===h[1]);
+      } else if(n==="norm"){
+        find("sum", (c,h)=> c[0]===h[0] && c[1]===h[1]);
+      } else if(["q","k","v"].includes(n)){
+        find("norm", (c,h)=> c[0]===h[0] && c[1]===h[1]);
+      } else if(n==="scores"){
+        const [bb,hh,i,j] = hit.coords;
+        find("q", (c)=> c[0]===bb && c[1]===i && c[2]===hh);
+        find("k", (c)=> c[0]===bb && c[1]===j && c[2]===hh);
+      } else if(n==="probs"){
+        find("scores", (c,h)=> c[0]===h[0] && c[1]===h[1] && c[2]===h[2] && c[3]===h[3]);
+      } else if(n==="z"){
+        find("probs", (c,h)=> c[0]===h[0] && c[2]===h[1]); // b,i
+        find("v", (c,h)=> c[0]===h[0] && c[1]===h[1]);     // b,i
+      } else if(n==="out"){
+        find("z", (c,h)=> c[0]===h[0] && c[1]===h[1]);
+      } else if(n==="logits"){
+        find("out", (c,h)=> c[0]===h[0] && c[1]===h[1]);
+      } else if(n==="k_cache" || n==="v_cache"){
+        // conceptual: cache comes from k/v
+        const [b,s,h] = hit.coords;
+        find(n==="k_cache" ? "k":"v", (c)=> c[0]===b && c[1]===s && c[2]===h);
+      }
+    }
+
+    let lockedHit = null;
+
+    stage.addEventListener('mousemove', (e)=>{
+      if(lockedHit) return;
+      const hit = pick(e);
+
+      Object.values(Blocks).forEach(b=>b.hideHighlight());
+      LineMgr.clear();
+
+      if(hit){
+        hit.block.highlightGroup(hit);
+        updateInspector(hit);
+        if(AppState.showRouting) drawDeps(hit);
+      } else {
+        Utils.hideIns();
+      }
+    });
+
+    stage.addEventListener('pointerup', (e)=>{
+      const hit = pick(e);
+
+      Object.values(Blocks).forEach(b=>b.hideHighlight());
+      LineMgr.clear();
+
+      if(hit){
+        if(lockedHit && lockedHit.block.tensorName===hit.block.tensorName && lockedHit.id===hit.id){
+          lockedHit = null;
+          Utils.hideIns();
+          return;
+        }
+        lockedHit = hit;
+        hit.block.highlightGroup(hit);
+        updateInspector(hit);
+        if(AppState.showRouting) drawDeps(hit);
+      } else {
+        lockedHit = null;
+        Utils.hideIns();
+      }
+    });
+
+    // ============================================================
+    // UI wiring
+    // ============================================================
+
+    function syncChips(){
+      document.getElementById('chip-grads').classList.toggle('on', AppState.showGrads || AppState.mode==="backward" || AppState.mode==="compare");
+      document.getElementById('chip-cache').classList.toggle('on', AppState.showCache);
+      document.getElementById('chip-routing').classList.toggle('on', AppState.showRouting);
+    }
+
+    function setMode(m){
+      AppState.mode = m;
+      document.getElementById('diag-mode').innerText = m[0].toUpperCase()+m.slice(1);
+
+      document.getElementById('forward-btn').classList.toggle('active', m==="forward");
+      document.getElementById('backward-btn').classList.toggle('active', m==="backward");
+      document.getElementById('compare-btn').classList.toggle('active', m==="compare");
+
+      if(m==="forward") AppState.showGrads = false;
+      if(m==="backward") AppState.showGrads = true;
+
+      syncChips();
+      setStep(CurrentStep);
+    }
+
+    document.getElementById('forward-btn').onclick = ()=> setMode("forward");
+    document.getElementById('backward-btn').onclick = ()=> setMode("backward");
+    document.getElementById('compare-btn').onclick = ()=> setMode("compare");
+    document.getElementById('reset-btn').onclick = ()=>{ Engine.resetAll(); Engine.forward(); populateTargetSelect(); setStep(CurrentStep); };
+
+    document.getElementById('chip-grads').onclick = ()=>{
+      AppState.showGrads = !AppState.showGrads;
+      syncChips();
+      setStep(CurrentStep);
+    };
+    document.getElementById('chip-cache').onclick = ()=>{
+      AppState.showCache = !AppState.showCache;
+      syncChips();
+      if(AppState.showCache){
+        Toast.show(`KV cache blocks are most meaningful in <b>Incremental</b> mode.`);
+      }
+      setStep(CurrentStep);
+    };
+    document.getElementById('chip-routing').onclick = ()=>{
+      AppState.showRouting = !AppState.showRouting;
+      syncChips();
+      if(!AppState.showRouting) LineMgr.clear();
+    };
+
+    document.getElementById('infer-mode').onchange = (e)=>{
+      AppState.inference = e.target.value;
+      Engine.forward();
+      setStep(CurrentStep);
+    };
+
+    document.getElementById('decode-step').oninput = (e)=>{
+      AppState.decodeT = parseInt(e.target.value,10);
+      Engine.forward();
+      setStep(CurrentStep);
+    };
+
+    document.getElementById('cursor-pos').oninput = (e)=>{
+      AppState.cursorI = parseInt(e.target.value,10);
+      Engine.forward();
+      setStep(CurrentStep);
+    };
+
+    document.getElementById('topk-k').oninput = (e)=>{
+      AppState.topk = parseInt(e.target.value,10);
+      const logits = Engine.tensors.get("logits")?.data;
+      if(logits) Engine.updateTopKPanel(logits,0,clamp(AppState.cursorI,0,AppState.S-1));
+    };
+    document.getElementById('topk-p').oninput = (e)=>{
+      AppState.topp = parseInt(e.target.value,10)/100;
+      const logits = Engine.tensors.get("logits")?.data;
+      if(logits) Engine.updateTopKPanel(logits,0,clamp(AppState.cursorI,0,AppState.S-1));
+    };
+    document.getElementById('temp').oninput = (e)=>{
+      AppState.temp = parseInt(e.target.value,10)/100;
+      const logits = Engine.tensors.get("logits")?.data;
+      if(logits) Engine.updateTopKPanel(logits,0,clamp(AppState.cursorI,0,AppState.S-1));
+    };
+
+    document.getElementById('greedy-btn').onclick = ()=>{
+      AppState.greedy = !AppState.greedy;
+      document.getElementById('greedy-btn').classList.toggle('active', AppState.greedy);
+    };
+
+    document.getElementById('sample-btn').onclick = ()=>{
+      const pick = Engine.sampleNext();
+      if(!pick) return;
+      AppState.targetId = pick.id;
+      populateTargetSelect();
+      Engine.forward();
+      if(AppState.mode==="backward") Engine.backward();
+      setStep(CurrentStep);
+    };
+
+    // V3: append sampled token to the input text for a “next token” feel
+    document.getElementById('append-sample').onclick = ()=>{
+      const pick = Engine.sampleNext();
+      if(!pick) return;
+
+      const box = document.getElementById('user-input');
+      const w = pick.token;
+
+      // avoid appending dummy specials too often
+      const safe = (w.startsWith("<tok_") ? "…" : w);
+
+      box.value = (box.value.trim() + " " + safe).trim();
+
+      // refit S to token count (within 16)
+      const n = box.value.trim() ? box.value.trim().split(/\s+/).length : 2;
+      AppState.S = clamp(n, 2, 16);
+      AppState.decodeT = clamp(AppState.decodeT, 1, AppState.S);
+
+      document.getElementById('decode-step').max = String(AppState.S);
+      document.getElementById('decode-step').value = String(clamp(AppState.decodeT,1,AppState.S));
+      document.getElementById('cursor-pos').max = String(AppState.S-1);
+      AppState.cursorI = clamp(AppState.cursorI, 0, AppState.S-1);
+      document.getElementById('cursor-pos').value = String(AppState.cursorI);
+
+      // in incremental mode, push decodeT to end so cache builds
+      if(AppState.inference==="incremental"){
+        AppState.decodeT = AppState.S;
+        document.getElementById('decode-step').value = String(AppState.decodeT);
+      }
+
+      Engine.forward();
+      populateTargetSelect();
+      setStep(CurrentStep);
+
+      Toast.show(`Appended sampled token: <b>${safe}</b>`);
+    };
+
+    document.getElementById('run-forward').onclick = ()=>{
+      Engine.forward();
+      if(AppState.mode==="backward") Engine.backward();
+      setStep(CurrentStep);
+    };
+
+    document.getElementById('run-backward').onclick = ()=>{
+      Engine.backward();
+      setMode("backward");
+      setStep(CurrentStep);
+    };
+
+    document.getElementById('fit-btn').onclick = ()=>{
+      const txt = document.getElementById('user-input').value.trim();
+      const n = txt ? txt.split(/\s+/).length : 2;
+      AppState.S = clamp(n, 2, 16);
+      AppState.decodeT = clamp(AppState.decodeT, 1, AppState.S);
+
+      document.getElementById('decode-step').max = String(AppState.S);
+      document.getElementById('decode-step').value = String(AppState.decodeT);
+
+      document.getElementById('cursor-pos').max = String(AppState.S-1);
+      AppState.cursorI = clamp(AppState.cursorI,0,AppState.S-1);
+      document.getElementById('cursor-pos').value = String(AppState.cursorI);
+
+      Engine.forward();
+      setStep(CurrentStep);
+    };
+
+    document.getElementById('user-input').oninput = ()=>{
+      // text change invalidates cache signature automatically
+      Engine.forward();
+      populateTargetSelect();
+      setStep(CurrentStep);
+    };
+
+    function populateTargetSelect(){
+      const sel = document.getElementById('target-token');
+      sel.innerHTML = "";
+      Engine.vocab.forEach(v=>{
+        const opt = document.createElement('option');
+        opt.value = String(v.id);
+        opt.innerText = `${v.token}  [${v.id}]`;
+        sel.appendChild(opt);
+      });
+      sel.value = String(AppState.targetId ?? 1);
+    }
+
+    document.getElementById('target-token').onchange = (e)=>{
+      AppState.targetId = parseInt(e.target.value,10);
+      Engine.forward();
+      if(AppState.mode==="backward") Engine.backward();
+      setStep(CurrentStep);
+    };
+
+    // V4 training controls
+    document.getElementById('lr').oninput = (e)=>{
+      AppState.lr = parseInt(e.target.value,10)/100;
+      Toast.show(`Learning rate: <b>${AppState.lr.toFixed(2)}</b>`);
+    };
+    document.getElementById('train-steps').oninput = (e)=>{
+      AppState.trainSteps = clamp(parseInt(e.target.value,10) || 1, 1, 200);
+    };
+
+    document.getElementById('train-once').onclick = ()=>{
+      const steps = AppState.trainSteps;
+      const lr = AppState.lr;
+
+      let loss = null;
+      for(let i=0;i<steps;i++){
+        loss = Engine.sgdStep({ lr, updateQKV:false }); // keep it stable by default
+      }
+      if(loss != null) Toast.show(`Train done: steps=<b>${steps}</b> loss=<b>${loss.toFixed(4)}</b>`);
+      setStep(CurrentStep);
+    };
+
+    document.getElementById('train-anim').onclick = async ()=>{
+      const steps = AppState.trainSteps;
+      const lr = AppState.lr;
+
+      Toast.show(`Training (animated): steps=<b>${steps}</b> lr=<b>${lr.toFixed(2)}</b>`, 1400);
+
+      // animate step-by-step so you can see grads change
+      for(let i=0;i<steps;i++){
+        Engine.sgdStep({ lr, updateQKV:false });
+        // show grads step for impact
+        if(AppState.mode !== "backward") setMode("backward");
+        setStep(Steps.findIndex(s=>s.key==="train"));
+        await new Promise(r=>setTimeout(r, 120));
+      }
+      // return to current step
+      setMode("forward");
+      setStep(CurrentStep);
+      Toast.show(`Training complete.`);
+    };
+
+    // ============================================================
+    // lil-gui
+    // ============================================================
+
+    const gui = new GUI({ title: 'Config' });
+
+    const fArch = gui.addFolder('Architecture');
+    fArch.add(AppState, 'B', 1, 4, 1).name('Batch').onFinishChange(()=>{ Engine.cache.valid=false; Engine.forward(); setStep(CurrentStep); });
+    fArch.add(AppState, 'S', 2, 16, 1).name('Seq').onFinishChange(()=>{
+      document.getElementById('decode-step').max = String(AppState.S);
+      AppState.decodeT = clamp(AppState.decodeT, 1, AppState.S);
+      document.getElementById('decode-step').value = String(AppState.decodeT);
+
+      document.getElementById('cursor-pos').max = String(AppState.S-1);
+      AppState.cursorI = clamp(AppState.cursorI, 0, AppState.S-1);
+      document.getElementById('cursor-pos').value = String(AppState.cursorI);
+
+      Engine.cache.valid=false;
+      Engine.forward(); setStep(CurrentStep);
+    });
+    fArch.add(AppState, 'D', 4, 64, 4).name('Model D').onFinishChange(()=>{ Engine.resetAll(); Engine.forward(); populateTargetSelect(); setStep(CurrentStep); });
+    fArch.add(AppState, 'H', 1, 8, 1).name('Heads').onFinishChange(()=>{ Engine.resetAll(); Engine.forward(); populateTargetSelect(); setStep(CurrentStep); });
+    fArch.add(AppState, 'isDecoder').name('Decoder Mask').onFinishChange(()=>{ Engine.forward(); setStep(CurrentStep); });
+
+    const fVis = gui.addFolder('Visuals');
+    fVis.add(AppState, 'autoCube').name('Auto Cube').onChange(()=>setStep(CurrentStep));
+    fVis.add(AppState, 'cubeSize', 0.06, 0.35).name('Cube Size').onChange(()=>setStep(CurrentStep));
+    fVis.add(AppState, 'gapBatch', 0, 1).name('Gap Batch').onChange(()=>setStep(CurrentStep));
+    fVis.add(AppState, 'gapSeq', 0, 0.5).name('Gap Seq').onChange(()=>setStep(CurrentStep));
+    fVis.add(AppState, 'gapModel', 0, 0.25).name('Gap Model').onChange(()=>setStep(CurrentStep));
+    fVis.add(AppState, 'gapHead', 0, 2.0).name('Gap Head').onChange(()=>setStep(CurrentStep));
+    fVis.add(AppState, 'opacity', 0.1, 1).name('Opacity').onChange(()=>setStep(CurrentStep));
+    fVis.add(AppState, 'wireframe').name('Wireframe').onChange(()=>setStep(CurrentStep));
+
+    // ============================================================
+    // Loss curve sparkline
+    // ============================================================
+
+    function drawSparkline(arr){
+      const cvs = document.getElementById('spark');
+      const ctx = cvs.getContext('2d');
+      ctx.clearRect(0,0,cvs.width,cvs.height);
+
+      // background
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.fillRect(0,0,cvs.width,cvs.height);
+
+      if(!arr || arr.length < 2) return;
+
+      const n = arr.length;
+      let mn = +Infinity, mx = -Infinity;
+      for(const v of arr){ mn = Math.min(mn,v); mx = Math.max(mx,v); }
+      const pad = 4;
+      const W = cvs.width - pad*2;
+      const H = cvs.height - pad*2;
+      const span = Math.max(1e-6, mx-mn);
+
+      // line
+      ctx.strokeStyle = 'rgba(0,210,255,0.95)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for(let i=0;i<n;i++){
+        const x = pad + (i/(n-1))*W;
+        const y = pad + (1 - (arr[i]-mn)/span)*H;
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+
+      // last point
+      const xLast = pad + W;
+      const yLast = pad + (1 - (arr[n-1]-mn)/span)*H;
+      ctx.fillStyle = 'rgba(255,0,85,0.95)';
+      ctx.beginPath();
+      ctx.arc(xLast, yLast, 3, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // ============================================================
+    // Boot
+    // ============================================================
+
+    function syncSliderBounds(){
+      document.getElementById('decode-step').max = String(AppState.S);
+      document.getElementById('decode-step').value = String(clamp(AppState.decodeT, 1, AppState.S));
+      document.getElementById('cursor-pos').max = String(AppState.S-1);
+      document.getElementById('cursor-pos').value = String(clamp(AppState.cursorI, 0, AppState.S-1));
+    }
+
+    buildSidebarSteps();
+    setMode("forward");
+    syncSliderBounds();
+
+    Engine.forward();
+    populateTargetSelect();
+    setStep(0);
+    syncChips();
+
+    function animate(){
+      requestAnimationFrame(animate);
+      controls.update();
+      for(const b of Object.values(Blocks)) b.updateLabel();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', ()=>{
+      camera.aspect = stage.clientWidth / stage.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(stage.clientWidth, stage.clientHeight);
+    });
+
+  </script>
 </body>
 </html>
