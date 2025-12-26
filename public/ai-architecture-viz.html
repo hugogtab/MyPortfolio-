@@ -2,97 +2,454 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Architecture Visualization</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Transformer Architecture Visualization</title>
   <style>
-    body {
+    * {
       margin: 0;
-      padding: 20px;
-      background-color: #111;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
       color: #fff;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    #canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: grab;
+    }
+
+    #canvas:active {
+      cursor: grabbing;
+    }
+
+    .controls {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      right: 10px;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
+      gap: 8px;
+      flex-wrap: wrap;
+      z-index: 100;
+      pointer-events: none;
     }
-    .container {
-      max-width: 800px;
-      text-align: center;
-    }
-    h1 {
-      color: #00d4ff;
-      margin-bottom: 20px;
-    }
-    p {
-      line-height: 1.6;
-      margin-bottom: 15px;
-      color: #aaa;
-    }
+
     .btn {
-      display: inline-block;
-      padding: 12px 24px;
-      background: #00d4ff;
-      color: #111;
-      text-decoration: none;
-      border-radius: 4px;
+      pointer-events: auto;
+      padding: 10px 16px;
+      background: rgba(0, 212, 255, 0.2);
+      border: 1px solid rgba(0, 212, 255, 0.5);
+      color: #00d4ff;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      white-space: nowrap;
+    }
+
+    .btn:active {
+      background: rgba(0, 212, 255, 0.4);
+      transform: scale(0.95);
+    }
+
+    .info {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      max-height: 40vh;
+      overflow-y: auto;
+    }
+
+    .info h3 {
+      color: #00d4ff;
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+
+    .info p {
+      color: #aaa;
+      line-height: 1.4;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+
+    .layer-label {
+      color: #00d4ff;
       font-weight: bold;
-      margin: 10px;
+      font-size: 11px;
     }
-    .btn:hover {
-      background: #00ffff;
-    }
-    .note {
-      background: rgba(0, 212, 255, 0.1);
-      border: 1px solid #00d4ff;
-      border-radius: 4px;
-      padding: 15px;
-      margin-top: 30px;
-      font-size: 0.9em;
+
+    @media (min-width: 768px) {
+      .controls {
+        top: 20px;
+        left: 20px;
+        right: auto;
+      }
+
+      .btn {
+        padding: 12px 20px;
+        font-size: 15px;
+      }
+
+      .info {
+        bottom: 20px;
+        left: 20px;
+        right: auto;
+        max-width: 400px;
+        font-size: 14px;
+        padding: 16px;
+      }
+
+      .info h3 {
+        font-size: 16px;
+      }
+
+      .info p {
+        font-size: 13px;
+      }
+
+      .layer-label {
+        font-size: 12px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🤖 AI Architecture Visualization</h1>
-    <p>
-      Interactive visualization of AI model architecture, attention mechanisms,
-      and neural network structures.
-    </p>
+  <canvas id="canvas"></canvas>
 
-    <p>
-      <strong>Template Ready:</strong><br>
-      Replace this entire file with your custom AI architecture visualization code.
-    </p>
-
-    <a href="/" class="btn">← Back to Portfolio</a>
-
-    <div class="note">
-      <strong>📝 Instructions:</strong>
-      <ol style="text-align: left; padding-left: 20px;">
-        <li>Paste your complete HTML visualization code here</li>
-        <li>Update the title in the &lt;head&gt; section</li>
-        <li>Keep the "Back to Portfolio" button or update the navigation</li>
-        <li>Add any required scripts (Three.js, D3.js, etc.)</li>
-      </ol>
-    </div>
+  <div class="controls">
+    <button class="btn" onclick="window.location.href='/'">← Back</button>
+    <button class="btn" id="zoomIn">Zoom +</button>
+    <button class="btn" id="zoomOut">Zoom −</button>
+    <button class="btn" id="reset">Reset View</button>
   </div>
 
-  <!-- YOUR CUSTOM CODE GOES HERE -->
-  <!-- Example structure:
+  <div class="info">
+    <h3>🤖 Transformer Architecture</h3>
+    <p><span class="layer-label">Blue:</span> Input Embedding & Positional Encoding</p>
+    <p><span class="layer-label">Cyan:</span> Multi-Head Self-Attention</p>
+    <p><span class="layer-label">Teal:</span> Feed-Forward Network</p>
+    <p><span class="layer-label">Purple:</span> Layer Normalization</p>
+    <p style="margin-top: 10px; color: #666; font-size: 11px;">
+      Drag to pan • Pinch or use buttons to zoom
+    </p>
+  </div>
 
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let dpr = window.devicePixelRatio || 1;
+
+    // Camera state
+    let camera = {
+      x: 0,
+      y: 0,
+      zoom: 1,
+      targetZoom: 1
+    };
+
+    // Touch/drag state
+    let isDragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    let lastDist = 0;
+
+    // Architecture definition
+    const layers = [
+      { name: 'Input Embedding', type: 'embed', color: '#0066cc', height: 60 },
+      { name: 'Positional Encoding', type: 'pos', color: '#0080ff', height: 40 },
+      { name: 'Layer Norm', type: 'norm', color: '#8b5cf6', height: 30 },
+      { name: 'Multi-Head\nSelf-Attention', type: 'attention', color: '#00d4ff', height: 100 },
+      { name: 'Add & Norm', type: 'norm', color: '#8b5cf6', height: 30 },
+      { name: 'Feed-Forward\nNetwork', type: 'ffn', color: '#14b8a6', height: 80 },
+      { name: 'Add & Norm', type: 'norm', color: '#8b5cf6', height: 30 },
+      { name: 'Linear + Softmax', type: 'output', color: '#0066cc', height: 60 }
+    ];
+
+    function resizeCanvas() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      ctx.scale(dpr, dpr);
+    }
+
+    function drawLayer(layer, x, y, w, h) {
+      // Shadow
+      ctx.shadowColor = 'rgba(0, 212, 255, 0.3)';
+      ctx.shadowBlur = 15;
+
+      // Main box
+      ctx.fillStyle = layer.color + '22';
+      ctx.strokeStyle = layer.color;
+      ctx.lineWidth = 2;
+
+      roundRect(ctx, x, y, w, h, 8);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+
+      // Text
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 14px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const lines = layer.name.split('\n');
+      lines.forEach((line, i) => {
+        const offset = (lines.length - 1) * -8;
+        ctx.fillText(line, x + w / 2, y + h / 2 + offset + i * 16);
+      });
+
+      // Special decorations
+      if (layer.type === 'attention') {
+        drawAttentionHeads(x, y, w, h);
+      } else if (layer.type === 'ffn') {
+        drawFFNNodes(x, y, w, h);
       }
     }
-  </script>
 
-  <script type="module">
-    // Your JavaScript code here
-  </script>
+    function drawAttentionHeads(x, y, w, h) {
+      const heads = 4;
+      const headW = w / (heads + 1);
 
-  -->
+      for (let i = 0; i < heads; i++) {
+        const hx = x + (i + 1) * headW;
+        const hy = y + h - 15;
+
+        ctx.fillStyle = '#00d4ff';
+        ctx.beginPath();
+        ctx.arc(hx, hy, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Connection lines
+        ctx.strokeStyle = '#00d4ff44';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(hx, hy - 4);
+        ctx.lineTo(hx, y + 20);
+        ctx.stroke();
+      }
+    }
+
+    function drawFFNNodes(x, y, w, h) {
+      const nodes = 5;
+      const nodeH = h / (nodes + 1);
+
+      for (let i = 0; i < nodes; i++) {
+        const ny = y + (i + 1) * nodeH;
+
+        // Input side
+        ctx.fillStyle = '#14b8a6';
+        ctx.beginPath();
+        ctx.arc(x + 15, ny, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Output side
+        ctx.beginPath();
+        ctx.arc(x + w - 15, ny, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Connection
+        ctx.strokeStyle = '#14b8a644';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + 15, ny);
+        ctx.lineTo(x + w - 15, ny);
+        ctx.stroke();
+      }
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    function drawArchitecture() {
+      ctx.clearRect(0, 0, width, height);
+
+      ctx.save();
+      ctx.translate(width / 2 + camera.x, height / 2 + camera.y);
+      ctx.scale(camera.zoom, camera.zoom);
+
+      const boxWidth = Math.min(300, width * 0.8);
+      const spacing = 20;
+      let totalHeight = layers.reduce((sum, l) => sum + l.height + spacing, -spacing);
+
+      let currentY = -totalHeight / 2;
+
+      layers.forEach((layer, i) => {
+        drawLayer(layer, -boxWidth / 2, currentY, boxWidth, layer.height);
+
+        // Connection arrow
+        if (i < layers.length - 1) {
+          const arrowY = currentY + layer.height + spacing / 2;
+          ctx.strokeStyle = '#ffffff44';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, currentY + layer.height + 2);
+          ctx.lineTo(0, arrowY);
+          ctx.stroke();
+
+          // Arrow head
+          ctx.fillStyle = '#ffffff44';
+          ctx.beginPath();
+          ctx.moveTo(0, arrowY);
+          ctx.lineTo(-5, arrowY - 8);
+          ctx.lineTo(5, arrowY - 8);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        currentY += layer.height + spacing;
+      });
+
+      ctx.restore();
+    }
+
+    function animate() {
+      // Smooth zoom
+      camera.zoom += (camera.targetZoom - camera.zoom) * 0.1;
+      drawArchitecture();
+      requestAnimationFrame(animate);
+    }
+
+    // Event handlers
+    function getEventPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      if (e.touches && e.touches.length > 0) {
+        return {
+          x: e.touches[0].clientX - rect.left,
+          y: e.touches[0].clientY - rect.top
+        };
+      }
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+    }
+
+    function getTouchDistance(e) {
+      if (e.touches.length < 2) return 0;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      const pos = getEventPos(e);
+      lastX = pos.x;
+      lastY = pos.y;
+    });
+
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        isDragging = true;
+        const pos = getEventPos(e);
+        lastX = pos.x;
+        lastY = pos.y;
+      } else if (e.touches.length === 2) {
+        isDragging = false;
+        lastDist = getTouchDistance(e);
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const pos = getEventPos(e);
+      camera.x += (pos.x - lastX);
+      camera.y += (pos.y - lastY);
+      lastX = pos.x;
+      lastY = pos.y;
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1 && isDragging) {
+        const pos = getEventPos(e);
+        camera.x += (pos.x - lastX);
+        camera.y += (pos.y - lastY);
+        lastX = pos.x;
+        lastY = pos.y;
+      } else if (e.touches.length === 2) {
+        const dist = getTouchDistance(e);
+        if (lastDist > 0) {
+          const delta = (dist - lastDist) * 0.01;
+          camera.targetZoom = Math.max(0.3, Math.min(3, camera.targetZoom + delta));
+        }
+        lastDist = dist;
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('mouseup', () => isDragging = false);
+    canvas.addEventListener('touchend', () => {
+      isDragging = false;
+      lastDist = 0;
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY * -0.001;
+      camera.targetZoom = Math.max(0.3, Math.min(3, camera.targetZoom + delta));
+    }, { passive: false });
+
+    // Button controls
+    document.getElementById('zoomIn').addEventListener('click', () => {
+      camera.targetZoom = Math.min(3, camera.targetZoom + 0.3);
+    });
+
+    document.getElementById('zoomOut').addEventListener('click', () => {
+      camera.targetZoom = Math.max(0.3, camera.targetZoom - 0.3);
+    });
+
+    document.getElementById('reset').addEventListener('click', () => {
+      camera.x = 0;
+      camera.y = 0;
+      camera.targetZoom = 1;
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // Initialize
+    resizeCanvas();
+    animate();
+  </script>
 </body>
 </html>
