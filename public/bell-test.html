@@ -11,7 +11,7 @@
       position: absolute; top: 10px; left: 10px; width: 360px;
       background: rgba(30, 30, 35, 0.95); color: #eee;
       padding: 15px; border-radius: 8px; border: 1px solid #555;
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      box-shadow: 0 0px 20px rgba(0,0,0,0.5);
       display: flex; flex-direction: column; gap: 10px;
       pointer-events: auto;
       user-select: none;
@@ -177,7 +177,8 @@
     </h3>
 
     <div id="graph-container">
-      <canvas id="graphCanvas"></canvas>
+      <!-- Explicit size helps in some layout timing cases -->
+      <canvas id="graphCanvas" width="360" height="160"></canvas>
       <div class="graph-legend">
         <div class="legend-row"><span class="swatch q"></span><span id="legendQuantum">Quantum theory</span></div>
         <div class="legend-row"><span class="swatch l"></span><span>Local bound (schematic)</span></div>
@@ -296,7 +297,7 @@
       <div class="switch-row" style="margin-top:8px; border-top:1px solid #333; padding-top:8px;">
         <div class="left">
           <span style="color:#aaa">Scatter Jitter</span>
-          <span class="help" title="Visual-only: adds tiny jitter so overlapping points are visible.">i</span>
+          <span class="help" title="Visual-only jitter for plotted points.">i</span>
         </div>
         <span style="color:#aaa">Off</span>
         <label class="toggle-switch">
@@ -309,7 +310,7 @@
       <div class="switch-row" style="margin-top:8px;">
         <div class="left">
           <span style="color:#aaa">Normal Speed</span>
-          <span class="help" title="Turbo increases emission rate. Physics is unchanged.">i</span>
+          <span class="help" title="Turbo increases emission rate only.">i</span>
         </div>
         <span style="color:#aaa">Normal</span>
         <label class="toggle-switch">
@@ -322,7 +323,7 @@
       <div class="switch-row" style="margin-top:8px;">
         <div class="left">
           <span style="color:#aaa">Losses</span>
-          <span class="help" title="Only meaningful for the Threshold local model.">i</span>
+          <span class="help" title="Only meaningful for Threshold local model.">i</span>
         </div>
         <span style="color:#aaa">Off</span>
         <label class="toggle-switch">
@@ -357,7 +358,7 @@
     <div class="control-group" style="border-left: 4px solid #8844cc;">
       <div class="label-row">
         <span>CHSH SETTINGS</span>
-        <span class="help" title="S = |E(a,b) − E(a,b′) + E(a′,b) + E(a′,b′)|">i</span>
+        <span class="help" title="S = |E(a,b) - E(a,b′) + E(a′,b) + E(a′,b′)|.">i</span>
       </div>
 
       <div class="input-row">
@@ -477,7 +478,9 @@
     controls.dampingFactor = 0.05;
     controls.target.copy(DEFAULT_TARGET);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
     const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
     dirLight.position.set(100, 500, 100);
     dirLight.castShadow = true;
@@ -495,16 +498,20 @@
       emissive: 0x0044aa, emissiveIntensity: 0.5
     });
     const matSource = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4 });
+
     const magnetRedMat  = new THREE.MeshStandardMaterial({ color: 0xdd2222, metalness: 0.2, roughness: 0.4 });
     const magnetBlueMat = new THREE.MeshStandardMaterial({ color: 0x2222dd, metalness: 0.2, roughness: 0.4 });
+
     const matScreen = new THREE.MeshStandardMaterial({ color: 0xeeeeee, emissive: 0x222222, emissiveIntensity: 0.1 });
     const fieldLineMat = new THREE.LineBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.3 });
+
     const matHitGreen  = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     const matHitPurple = new THREE.MeshBasicMaterial({ color: 0xff00ff });
     const matNoDetect  = new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.35 });
 
     const particleGeo = new THREE.SphereGeometry(3);
     const particleMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
     const photonMat = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.85 });
 
     // ---------------------------
@@ -516,6 +523,7 @@
     floor.receiveShadow = true;
     scene.add(floor);
 
+    // Source
     const sourceGroup = new THREE.Group();
     sourceGroup.position.set(-400, 0, 0);
     scene.add(sourceGroup);
@@ -524,7 +532,8 @@
     laserHousing.castShadow = true;
     sourceGroup.add(laserHousing);
 
-    const crystalMesh = new THREE.Mesh(new THREE.OctahedronGeometry(15), matCrystal);
+    const crystalGeo = new THREE.OctahedronGeometry(15);
+    const crystalMesh = new THREE.Mesh(crystalGeo, matCrystal);
     crystalMesh.position.set(100, 0, 0);
     sourceGroup.add(crystalMesh);
 
@@ -581,7 +590,8 @@
           const xSpread = (-25 * s) + (50 * s * (i / (raysPerSlice-1)));
           const end = new THREE.Vector3(xSpread, -45 * s, z);
           const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-          fieldGroup.add(new THREE.Line(geometry, fieldLineMat));
+          const line = new THREE.Line(geometry, fieldLineMat);
+          fieldGroup.add(line);
         }
       }
 
@@ -668,27 +678,20 @@
       canvas: document.getElementById('graphCanvas'),
     };
 
-    // ✅ Guard: make sure IDs are unique (bars won't move if you're looking at a different duplicate)
-    for (const id of ["barEab","barEabp","barEapb","barEapbp","txtEab","txtEabp","txtEapb","txtEapbp"]) {
-      if (document.querySelectorAll("#" + id).length !== 1) {
-        console.warn("Duplicate or missing ID:", id, "count=", document.querySelectorAll("#" + id).length);
-      }
-    }
-
     const ctx = ui.canvas.getContext('2d');
 
     // ---------------------------
     // Data structures
     // ---------------------------
-    let binStats = new Map();      // binKey -> { npp,npm,nmp,nmm, n, sum, E, sigma }
-    let sweepPoints = [];          // [{x, E, sigma, n}]
+    let binStats = new Map();
+    let sweepPoints = [];
 
     let chsh = {
       running: false,
       idx: 0,
       seq: [],
       results: { Eab:null, Eabp:null, Eapb:null, Eapbp:null, Sab:null },
-      accumulator: null, // {npp,npm,nmp,nmm,n,sum}
+      accumulator: null,
     };
 
     let emittedPairs = 0;
@@ -706,12 +709,12 @@
     }
 
     function getAngles() {
-      return { a: parseFloat(ui.slA.value), b: parseFloat(ui.slB.value) };
+      const a = parseFloat(ui.slA.value);
+      const b = parseFloat(ui.slB.value);
+      return { a, b };
     }
 
-    function getK() {
-      return ui.experiment.value === 'photon' ? 2 : 1;
-    }
+    function getK() { return ui.experiment.value === 'photon' ? 2 : 1; }
 
     function theoryE(deltaDeg) {
       const k = getK();
@@ -752,10 +755,9 @@
       const { a, b } = getAngles();
       const delta = foldDelta180(a - b);
       const key = deltaBinKey(delta);
-
       ui.binLabel.textContent = `Δ bin: ${key}°`;
-      const stats = binStats.get(key) || { npp:0, npm:0, nmp:0, nmm:0, n:0, E:0, sigma:0 };
 
+      const stats = binStats.get(key) || { npp:0, npm:0, nmp:0, nmm:0, n:0, E:0, sigma:0 };
       ui.npp.textContent = stats.npp;
       ui.npm.textContent = stats.npm;
       ui.nmp.textContent = stats.nmp;
@@ -774,193 +776,8 @@
       ui.coinSub.textContent = `Coincidences: ${coincidencePairs}`;
     }
 
-    function setOverlay(on, text) {
-      if (on) {
-        ui.graphContainer.classList.add('active-sweep');
-        ui.overlayStatus.textContent = text || "RUNNING...";
-      } else {
-        ui.graphContainer.classList.remove('active-sweep');
-      }
-    }
-
-    // ✅ sample count always comes from the UI (prevents 0/0 and stalled bars)
-    function getCfgSamples() {
-      const v = Number(ui.sampIn.value);
-      return (Number.isFinite(v) && v > 0) ? Math.floor(v) : 200;
-    }
-
-    function toggleControls(enable) {
-      document.getElementById('sweepBtn').disabled = !enable;
-      document.getElementById('chshBtn').disabled  = !enable;
-      document.getElementById('fireBtn').disabled  = !enable;
-
-      ui.stepIn.disabled = !enable;
-      ui.sampIn.disabled = !enable;
-      ui.binIn.disabled  = !enable;
-
-      ui.aIn.disabled = !enable;
-      ui.apIn.disabled = !enable;
-      ui.bIn.disabled = !enable;
-      ui.bpIn.disabled = !enable;
-      ui.chshPreset.disabled = !enable;
-
-      ui.localModel.disabled = !enable;
-      ui.experiment.disabled = !enable;
-      ui.qMode.disabled = !enable;
-
-      ui.lossToggle.disabled = !enable;
-      ui.lossThrIn.disabled = !enable;
-    }
-
     // ---------------------------
-    // Bars
-    // ---------------------------
-    let cfgStepSize = 10;
-    let cfgSamples = 200;
-
-    function setBar(barEl, pct) {
-      const clamped = Math.max(0, Math.min(100, pct));
-      barEl.style.width = clamped.toFixed(1) + "%";
-    }
-
-    function resetChshBars() {
-      const total = getCfgSamples();
-      cfgSamples = total;
-
-      [ui.rowEab, ui.rowEabp, ui.rowEapb, ui.rowEapbp].forEach(r => r.classList.remove('bar-done'));
-
-      ui.barEab.style.width   = "0%";
-      ui.barEabp.style.width  = "0%";
-      ui.barEapb.style.width  = "0%";
-      ui.barEapbp.style.width = "0%";
-
-      ui.txtEab.textContent   = `0/${total}`;
-      ui.txtEabp.textContent  = `0/${total}`;
-      ui.txtEapb.textContent  = `0/${total}`;
-      ui.txtEapbp.textContent = `0/${total}`;
-    }
-
-    function updateChshBarsLive() {
-      if (!chsh.running) return;
-
-      const total = Math.max(1, cfgSamples);
-      const idx = chsh.idx;
-      const n = (chsh.accumulator && typeof chsh.accumulator.n === "number") ? chsh.accumulator.n : 0;
-      const pct = 100 * (n / total);
-
-      if (idx === 0) { setBar(ui.barEab, pct);   ui.txtEab.textContent   = `${n}/${cfgSamples}`; }
-      if (idx === 1) { setBar(ui.barEabp, pct);  ui.txtEabp.textContent  = `${n}/${cfgSamples}`; }
-      if (idx === 2) { setBar(ui.barEapb, pct);  ui.txtEapb.textContent  = `${n}/${cfgSamples}`; }
-      if (idx === 3) { setBar(ui.barEapbp, pct); ui.txtEapbp.textContent = `${n}/${cfgSamples}`; }
-    }
-
-    // ---------------------------
-    // Graph
-    // ---------------------------
-    let graphW = 360, graphH = 160;
-
-    function resizeGraphCanvas() {
-      const rect = ui.graphContainer.getBoundingClientRect();
-      graphW = Math.max(320, Math.floor(rect.width));
-      graphH = Math.max(140, Math.floor(rect.height));
-      const dpr = Math.max(1, window.devicePixelRatio || 1);
-
-      ui.canvas.width  = Math.floor(graphW * dpr);
-      ui.canvas.height = Math.floor(graphH * dpr);
-      ui.canvas.style.width  = graphW + "px";
-      ui.canvas.style.height = graphH + "px";
-
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-
-    function drawGraph() {
-      const w = graphW, h = graphH;
-      const rangeMax = 180;
-      ctx.clearRect(0, 0, w, h);
-
-      ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
-
-      ctx.strokeStyle = "#222";
-      for (let deg = 0; deg <= 180; deg += 30) {
-        const x = (deg / rangeMax) * w;
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-      }
-
-      // theory
-      ctx.strokeStyle = "#0066ff"; ctx.lineWidth = 2; ctx.beginPath();
-      for (let x = 0; x <= w; x++) {
-        const angleDeg = (x / w) * rangeMax;
-        const corr = theoryE(angleDeg);
-        const y = (h/2) - (corr * (h/2 - 12));
-        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-
-      // local schematic
-      ctx.strokeStyle = "#777"; ctx.setLineDash([6, 6]); ctx.lineWidth = 1.5; ctx.beginPath();
-      ctx.moveTo(0, h - 12); ctx.lineTo(w/2, h/2); ctx.lineTo(w, 12);
-      ctx.stroke(); ctx.setLineDash([]);
-
-      const jitter = ui.jitter.checked;
-      const yFromE = (E) => (h/2) - (E * (h/2 - 24));
-      const xFromDeg = (d) => (d / rangeMax) * w;
-
-      for (const [key, b] of binStats.entries()) {
-        if (!b.n) continue;
-        const px = xFromDeg(key);
-        const py = yFromE(b.E);
-        const err = b.sigma * (h/2 - 24);
-        const jx = jitter ? (Math.random() - 0.5) * 2 : 0;
-        const jy = jitter ? (Math.random() - 0.5) * 2 : 0;
-
-        ctx.strokeStyle = "rgba(220,220,220,0.35)";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(px + jx, py - err + jy);
-        ctx.lineTo(px + jx, py + err + jy);
-        ctx.stroke();
-
-        ctx.fillStyle = "rgba(220,220,220,0.55)";
-        ctx.beginPath();
-        ctx.arc(px + jx, py + jy, 2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      for (const p of sweepPoints) {
-        const px = xFromDeg(p.x);
-        const py = yFromE(p.E);
-        const err = p.sigma * (h/2 - 24);
-        const jx = jitter ? (Math.random() - 0.5) * 3 : 0;
-        const jy = jitter ? (Math.random() - 0.5) * 3 : 0;
-
-        ctx.strokeStyle = "rgba(255,204,0,0.75)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(px + jx, py - err + jy);
-        ctx.lineTo(px + jx, py + err + jy);
-        ctx.stroke();
-
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = "rgba(255,204,0,0.8)";
-        ctx.fillStyle = "#ffcc00";
-        ctx.beginPath();
-        ctx.arc(px + jx, py + jy, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      }
-
-      const { a, b } = getAngles();
-      const delta = foldDelta180(a - b);
-      const key = deltaBinKey(delta);
-      const px = xFromDeg(key);
-      ctx.strokeStyle = "rgba(0,212,255,0.35)";
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, h); ctx.stroke();
-    }
-
-    // ---------------------------
-    // Particles / emission
+    // Visual cleanup helpers
     // ---------------------------
     let particles = [];
     let stuckParticles = [];
@@ -968,12 +785,6 @@
     let isFiring = false;
     let spawnState = 'idle';
     let sourcePhoton = null;
-
-    const clock = new THREE.Clock();
-    const SPEED_Z = 900;
-    const DEFLECT_SPEED = 90;
-    const PHOTON_SPEED = { normal: 480, turbo: 2400 };
-    const COOLDOWN_MS  = { normal: 70,  turbo: 12 };
 
     function clearScreenHits() {
       stuckParticles.forEach(m => { if (m && m.parent) m.parent.remove(m); });
@@ -997,6 +808,216 @@
       abortSpawnPhoton();
     }
 
+    // ---------------------------
+    // CHSH bar utils
+    // ---------------------------
+    function setBar(barEl, pct) {
+      const safe = Number.isFinite(pct) ? pct : 0;
+      const clamped = Math.max(0, Math.min(100, safe));
+      barEl.style.width = clamped.toFixed(1) + "%";
+    }
+
+    function getCfgSamples() {
+      const v = Number(ui.sampIn.value);
+      return (Number.isFinite(v) && v > 0) ? Math.floor(v) : 200;
+    }
+
+    let cfgSamples = 200;
+
+    function resetChshBars() {
+      const total = getCfgSamples();
+      cfgSamples = total;
+
+      [ui.rowEab, ui.rowEabp, ui.rowEapb, ui.rowEapbp].forEach(r => r.classList.remove('bar-done'));
+
+      ui.barEab.style.width   = "0%";
+      ui.barEabp.style.width  = "0%";
+      ui.barEapb.style.width  = "0%";
+      ui.barEapbp.style.width = "0%";
+
+      ui.txtEab.textContent   = `0/${total}`;
+      ui.txtEabp.textContent  = `0/${total}`;
+      ui.txtEapb.textContent  = `0/${total}`;
+      ui.txtEapbp.textContent = `0/${total}`;
+    }
+
+    function updateChshBarsLive() {
+      if (!chsh.running) return;
+
+      const total = cfgSamples; // locked for the run
+      const idx = chsh.idx;
+      const n = (chsh.accumulator && Number.isFinite(chsh.accumulator.n)) ? chsh.accumulator.n : 0;
+      const pct = 100 * (n / Math.max(1, total));
+
+      if (idx === 0) { setBar(ui.barEab, pct);   ui.txtEab.textContent   = `${n}/${total}`; }
+      if (idx === 1) { setBar(ui.barEabp, pct);  ui.txtEabp.textContent  = `${n}/${total}`; }
+      if (idx === 2) { setBar(ui.barEapb, pct);  ui.txtEapb.textContent  = `${n}/${total}`; }
+      if (idx === 3) { setBar(ui.barEapbp, pct); ui.txtEapbp.textContent = `${n}/${total}`; }
+    }
+
+    function setOverlay(on, text) {
+      if (on) {
+        ui.graphContainer.classList.add('active-sweep');
+        ui.overlayStatus.textContent = text || "RUNNING...";
+      } else {
+        ui.graphContainer.classList.remove('active-sweep');
+      }
+    }
+
+    // ---------------------------
+    // Graph
+    // ---------------------------
+    let graphW = 360;
+    let graphH = 160;
+
+    function resizeGraphCanvas() {
+      const rect = ui.graphContainer.getBoundingClientRect();
+      graphW = Math.max(320, Math.floor(rect.width));
+      graphH = Math.max(140, Math.floor(rect.height));
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+      ui.canvas.width  = Math.floor(graphW * dpr);
+      ui.canvas.height = Math.floor(graphH * dpr);
+      ui.canvas.style.width  = graphW + "px";
+      ui.canvas.style.height = graphH + "px";
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function drawGraph() {
+      const w = graphW, h = graphH;
+      const rangeMax = 180;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // midline
+      ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, h/2); ctx.lineTo(w, h/2);
+      ctx.stroke();
+
+      // vertical grid
+      ctx.strokeStyle = "#222";
+      for (let deg = 0; deg <= 180; deg += 30) {
+        const x = (deg / rangeMax) * w;
+        ctx.beginPath();
+        ctx.moveTo(x, 0); ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+
+      // quantum theory curve
+      ctx.strokeStyle = "#0066ff"; ctx.lineWidth = 2; ctx.beginPath();
+      for (let x = 0; x <= w; x++) {
+        const angleDeg = (x / w) * rangeMax;
+        const corr = theoryE(angleDeg);
+        const y = (h/2) - (corr * (h/2 - 12));
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // schematic local line
+      ctx.strokeStyle = "#777"; ctx.setLineDash([6, 6]); ctx.lineWidth = 1.5; ctx.beginPath();
+      ctx.moveTo(0, h - 12);
+      ctx.lineTo(w/2, h/2);
+      ctx.lineTo(w, 12);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const jitter = ui.jitter.checked;
+      function yFromE(E) { return (h/2) - (E * (h/2 - 24)); }
+      function xFromDeg(d) { return (d / rangeMax) * w; }
+
+      // bins
+      for (const [key, b] of binStats.entries()) {
+        if (!b.n) continue;
+        const px = xFromDeg(key);
+        const py = yFromE(b.E);
+        const err = b.sigma * (h/2 - 24);
+        const jx = jitter ? (Math.random() - 0.5) * 2 : 0;
+        const jy = jitter ? (Math.random() - 0.5) * 2 : 0;
+
+        ctx.strokeStyle = "rgba(220,220,220,0.35)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px + jx, py - err + jy);
+        ctx.lineTo(px + jx, py + err + jy);
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(220,220,220,0.55)";
+        ctx.beginPath();
+        ctx.arc(px + jx, py + jy, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // sweep/CHSH points
+      for (const p of sweepPoints) {
+        const px = xFromDeg(p.x);
+        const py = yFromE(p.E);
+        const err = p.sigma * (h/2 - 24);
+        const jx = jitter ? (Math.random() - 0.5) * 3 : 0;
+        const jy = jitter ? (Math.random() - 0.5) * 3 : 0;
+
+        ctx.strokeStyle = "rgba(255,204,0,0.75)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(px + jx, py - err + jy);
+        ctx.lineTo(px + jx, py + err + jy);
+        ctx.stroke();
+
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = "rgba(255,204,0,0.8)";
+        ctx.fillStyle = "#ffcc00";
+        ctx.beginPath();
+        ctx.arc(px + jx, py + jy, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      // current bin marker
+      const { a, b } = getAngles();
+      const delta = foldDelta180(a - b);
+      const key = deltaBinKey(delta);
+      const px = xFromDeg(key);
+      ctx.strokeStyle = "rgba(0,212,255,0.35)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px, h);
+      ctx.stroke();
+    }
+
+    // ---------------------------
+    // Emission / physics
+    // ---------------------------
+    const clock = new THREE.Clock();
+    const SPEED_Z = 900;
+    const DEFLECT_SPEED = 90;
+    const PHOTON_SPEED = { normal: 480, turbo: 2400 };
+    const COOLDOWN_MS  = { normal: 70,  turbo: 12 };
+
+    function toggleControls(enable) {
+      document.getElementById('sweepBtn').disabled = !enable;
+      document.getElementById('chshBtn').disabled = !enable;
+      document.getElementById('fireBtn').disabled = !enable;
+
+      ui.stepIn.disabled = !enable;
+      ui.sampIn.disabled = !enable;
+      ui.binIn.disabled = !enable;
+
+      ui.aIn.disabled = !enable;
+      ui.apIn.disabled = !enable;
+      ui.bIn.disabled = !enable;
+      ui.bpIn.disabled = !enable;
+      ui.chshPreset.disabled = !enable;
+
+      ui.localModel.disabled = !enable;
+      ui.experiment.disabled = !enable;
+      ui.qMode.disabled = !enable;
+
+      ui.lossToggle.disabled = !enable;
+      ui.lossThrIn.disabled = !enable;
+    }
+
     function startSpawnSequence() {
       if (spawnState !== 'idle') return;
       spawnState = 'photon-traveling';
@@ -1009,8 +1030,8 @@
       if (spawnState !== 'photon-traveling') return;
 
       const speed = ui.turboMode.checked ? PHOTON_SPEED.turbo : PHOTON_SPEED.normal;
-
       sourcePhoton.position.x += speed * dt;
+
       if (sourcePhoton.position.x >= 100) {
         sourceGroup.remove(sourcePhoton);
         sourcePhoton = null;
@@ -1025,32 +1046,6 @@
           spawnState = 'idle';
         }, cooldown);
       }
-    }
-
-    function spawnPair() {
-      emittedPairs++;
-
-      const lambda = Math.random() * 360;
-      const u = Math.random();
-
-      const meshA = new THREE.Mesh(particleGeo, particleMat);
-      const meshB = new THREE.Mesh(particleGeo, particleMat);
-
-      const crystalWorldPos = new THREE.Vector3();
-      crystalMesh.getWorldPosition(crystalWorldPos);
-
-      alice.root.add(meshA);
-      bob.root.add(meshB);
-
-      meshA.position.copy(alice.root.worldToLocal(crystalWorldPos.clone()));
-      meshB.position.copy(bob.root.worldToLocal(crystalWorldPos.clone()));
-
-      const pA = { mesh: meshA, role:'alice', decided:false, finished:false, spin:0, hidden:lambda, u, detected:true };
-      const pB = { mesh: meshB, role:'bob',   decided:false, finished:false, spin:0, hidden:lambda, u, detected:true };
-      pA.partner = pB; pB.partner = pA;
-
-      particles.push(pA, pB);
-      updateTopStats();
     }
 
     // ---------------------------
@@ -1081,14 +1076,23 @@
         if (closeness < threshold) {
           const failProb = 1 - (closeness / Math.max(1e-6, threshold));
           const u = (role === 'alice') ? sharedU : (sharedU * 0.913 + 0.041) % 1.0;
-          if (u < failProb) return { detected:false, outcome:0 };
+          if (u < failProb) return { detected: false, outcome: 0 };
         }
       }
-      return { detected:true, outcome:(pPlus >= 0.5) ? 1 : -1 };
+      return { detected: true, outcome: (pPlus >= 0.5) ? 1 : -1 };
+    }
+
+    function latchPairSettingsIfNeeded(p, angleA, angleB) {
+      // Record the measurement settings once, at "decision time".
+      if (!p.pair) return;
+      if (p.pair.measA === undefined) p.pair.measA = angleA;
+      if (p.pair.measB === undefined) p.pair.measB = angleB;
     }
 
     function decideOutcomesQuantum(p, angleA, angleB) {
       if (p.partner.decided) return;
+
+      latchPairSettingsIfNeeded(p, angleA, angleB);
 
       const mySpin = (Math.random() > 0.5) ? 1 : -1;
       p.spin = mySpin;
@@ -1104,6 +1108,8 @@
     }
 
     function decideOutcomesLocal(p, angleA, angleB) {
+      latchPairSettingsIfNeeded(p, angleA, angleB);
+
       const model = ui.localModel.value;
       const stationAngle = (p.role === 'alice') ? angleA : angleB;
 
@@ -1112,13 +1118,11 @@
         p.decided = true;
         return;
       }
-
       if (model === "malus") {
         p.spin = localOutcome_malus(p.role, stationAngle, p.hidden, p.u);
         p.decided = true;
         return;
       }
-
       if (model === "threshold") {
         const threshold = Math.min(0.49, Math.max(0, parseFloat(ui.lossThrIn.value) || 0.10));
         const lossesEnabled = ui.lossToggle.checked;
@@ -1131,8 +1135,65 @@
     }
 
     // ---------------------------
-    // Recording
+    // Spawn + robust per-pair bookkeeping
     // ---------------------------
+    function spawnPair() {
+      emittedPairs++;
+
+      const lambda = Math.random() * 360;
+      const u = Math.random();
+
+      const meshA = new THREE.Mesh(particleGeo, particleMat);
+      const meshB = new THREE.Mesh(particleGeo, particleMat);
+
+      const crystalWorldPos = new THREE.Vector3();
+      crystalMesh.getWorldPosition(crystalWorldPos);
+
+      alice.root.add(meshA);
+      bob.root.add(meshB);
+
+      meshA.position.copy(alice.root.worldToLocal(crystalWorldPos.clone()));
+      meshB.position.copy(bob.root.worldToLocal(crystalWorldPos.clone()));
+
+      const pair = { hitCount: 0, recorded: false, measA: undefined, measB: undefined };
+
+      const pA = {
+        mesh: meshA, role: 'alice',
+        decided: false,
+        spin: 0, hidden: lambda, u,
+        detected: true,
+        partner: null,
+        pair,
+        impactRegistered: false
+      };
+
+      const pB = {
+        mesh: meshB, role: 'bob',
+        decided: false,
+        spin: 0, hidden: lambda, u,
+        detected: true,
+        partner: null,
+        pair,
+        impactRegistered: false
+      };
+
+      pA.partner = pB;
+      pB.partner = pA;
+
+      pair.a = pA;
+      pair.b = pB;
+
+      particles.push(pA, pB);
+      updateTopStats();
+    }
+
+    function deltaFromPair(p) {
+      // Use latched settings if present, otherwise fall back.
+      const a = (p.pair && Number.isFinite(p.pair.measA)) ? p.pair.measA : parseFloat(ui.slA.value);
+      const b = (p.pair && Number.isFinite(p.pair.measB)) ? p.pair.measB : parseFloat(ui.slB.value);
+      return foldDelta180(a - b);
+    }
+
     function recordCoincidence(aliceSpin, bobSpin, deltaDeg) {
       coincidencePairs++;
 
@@ -1147,10 +1208,13 @@
       const prod = (aliceSpin === bobSpin) ? 1 : -1;
       b.sum += prod;
       b.n++;
-
       updateBinComputed(b);
 
-      // CHSH accumulation (drives the bars)
+      if (isSweeping && sweepBatch) {
+        sweepBatch.sum += prod;
+        sweepBatch.n++;
+      }
+
       if (chsh.running && chsh.accumulator) {
         const acc = chsh.accumulator;
         if (aliceSpin === 1 && bobSpin === 1) acc.npp++;
@@ -1159,43 +1223,12 @@
         else if (aliceSpin === -1 && bobSpin === -1) acc.nmm++;
         acc.sum += prod;
         acc.n++;
+        updateChshBarsLive(); // <- ensures bars move as soon as coincidences are recorded
       }
 
-      if (chsh.running) updateChshBarsLive();
       updateTopStats();
       updateCountsPanelForCurrentDelta();
       drawGraph();
-    }
-
-    function getCurrentDeltaDeg() {
-      const { a, b } = getAngles();
-      return foldDelta180(a - b);
-    }
-
-    function updateChshDisplay() {
-      const r = chsh.results;
-      const fmt = (v) => (v === null || v === undefined) ? "—" : v.toFixed(3);
-
-      ui.chshTable.innerHTML =
-        `E(a,b)=${fmt(r.Eab)} &nbsp; E(a,b′)=${fmt(r.Eabp)}<br>` +
-        `E(a′,b)=${fmt(r.Eapb)} &nbsp; E(a′,b′)=${fmt(r.Eapbp)}`;
-
-      ui.sVal.textContent = (r.Sab == null) ? "—" : r.Sab.toFixed(3);
-    }
-
-    function finalizeChshIfReady() {
-      const r = chsh.results;
-      if ([r.Eab, r.Eabp, r.Eapb, r.Eapbp].some(v => v == null)) return;
-
-      const S = Math.abs(r.Eab - r.Eabp + r.Eapb + r.Eapbp);
-      r.Sab = S;
-
-      const sigs = [r.sEab, r.sEabp, r.sEapb, r.sEapbp].map(x => x ?? 0);
-      const sigmaS = Math.sqrt(sigs.reduce((acc, s) => acc + s*s, 0));
-
-      ui.sVal.textContent = S.toFixed(3);
-      ui.sSub.textContent = `σ≈${sigmaS.toFixed(3)} (N=${cfgSamples} each)`;
-      updateChshDisplay();
     }
 
     // ---------------------------
@@ -1206,7 +1239,7 @@
       const angleB = parseFloat(ui.slB.value);
 
       alice.rotator.rotation.z = THREE.MathUtils.degToRad(angleA);
-      bob.rotator.rotation.z   = THREE.MathUtils.degToRad(angleB);
+      bob.rotator.rotation.z = THREE.MathUtils.degToRad(angleB);
 
       ui.valA.innerText = angleA + "°";
       ui.valB.innerText = angleB + "°";
@@ -1214,8 +1247,10 @@
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
 
+        // Move toward screens
         p.mesh.position.z -= SPEED_Z * dt;
 
+        // Decide in interaction region
         if (!p.decided && p.mesh.position.z < 40 && p.mesh.position.z > -40) {
           if (ui.qMode.checked) decideOutcomesQuantum(p, angleA, angleB);
           else decideOutcomesLocal(p, angleA, angleB);
@@ -1223,13 +1258,15 @@
           if (p.decided && p.detected === false) p.mesh.material = matNoDetect;
         }
 
+        // Deflection
         if (p.decided && p.detected !== false && p.mesh.position.z < 0) {
           const rot = (p.role === 'alice') ? alice.rotator.rotation.z : bob.rotator.rotation.z;
           const force = (p.spin || 0) * DEFLECT_SPEED * dt;
-          p.mesh.position.x += (-Math.sin(rot) * force);
-          p.mesh.position.y += ( Math.cos(rot) * force);
+          p.mesh.position.x += -Math.sin(rot) * force;
+          p.mesh.position.y +=  Math.cos(rot) * force;
         }
 
+        // Impact
         if (p.mesh.position.z <= -158) {
           p.mesh.position.z = -157;
 
@@ -1241,15 +1278,28 @@
             p.mesh.scale.set(3.0, 3.0, 0.1);
           }
 
-          if (!p.finished) {
-            p.finished = true;
+          if (!p.impactRegistered) {
+            p.impactRegistered = true;
 
-            if (p.partner.finished) {
-              const pa = (p.role === 'alice') ? p : p.partner;
-              const pb = (p.role === 'bob')   ? p : p.partner;
+            // Safety: force a decision if needed (prevents "stuck" runs)
+            if (!p.decided || !p.partner.decided) {
+              if (ui.qMode.checked) decideOutcomesQuantum(p, angleA, angleB);
+              else {
+                decideOutcomesLocal(p, angleA, angleB);
+                decideOutcomesLocal(p.partner, angleA, angleB);
+              }
+            }
+
+            p.pair.hitCount++;
+
+            if (p.pair.hitCount >= 2 && !p.pair.recorded) {
+              p.pair.recorded = true;
+
+              const pa = p.pair.a;
+              const pb = p.pair.b;
 
               if (pa.detected !== false && pb.detected !== false) {
-                const delta = getCurrentDeltaDeg();
+                const delta = deltaFromPair(p); // <- uses latched angles
                 recordCoincidence(pa.spin, pb.spin, delta);
               }
             }
@@ -1267,31 +1317,28 @@
     }
 
     // ---------------------------
-    // Sweep
+    // Auto Sweep
     // ---------------------------
     let isSweeping = false;
     let sweepAngle = 0;
-    let sweepBatch = null;
+    let sweepBatch = null; // {sum,n}
+    let cfgStepSize = 10;
 
     function startSweep() {
       cfgStepSize = parseInt(ui.stepIn.value, 10) || 10;
       cfgSamples  = getCfgSamples();
+
+      resetChshBars();
 
       clearMeasurementBlock();
       isSweeping = true;
       sweepPoints = [];
       sweepAngle = 0;
       sweepBatch = { sum: 0, n: 0 };
-
       ui.slB.value = 0;
 
       setOverlay(true, "SWEEPING...");
       toggleControls(false);
-
-      chsh.results = { Eab:null, Eabp:null, Eapb:null, Eapbp:null, Sab:null };
-      ui.sVal.textContent = "—";
-      ui.sSub.textContent = "σ≈—";
-      updateChshDisplay();
 
       drawGraph();
     }
@@ -1301,6 +1348,7 @@
       sweepBatch = null;
       setOverlay(false);
       toggleControls(true);
+      resetChshBars();
     }
 
     function updateSweep() {
@@ -1321,6 +1369,7 @@
 
         clearMeasurementBlock();
         ui.slB.value = (sweepAngle % 360);
+
         sweepBatch = { sum: 0, n: 0 };
         drawGraph();
       }
@@ -1333,42 +1382,86 @@
     // ---------------------------
     function applyChshPreset() {
       const preset = ui.chshPreset.value;
+      const k = getK(); // 1 electron, 2 photon
+
       if (preset === "max") {
-        ui.aIn.value  = 0;
-        ui.apIn.value = 45;
-        ui.bIn.value  = 22.5;
-        ui.bpIn.value = 67.5;
+        if (k === 1) {
+          // Electron spin: E = -cos(Δ)
+          ui.aIn.value  = 0;
+          ui.apIn.value = 90;
+          ui.bIn.value  = 45;
+          ui.bpIn.value = 135;
+        } else {
+          // Photon polarization: E = -cos(2Δ)
+          ui.aIn.value  = 0;
+          ui.apIn.value = 45;
+          ui.bIn.value  = 22.5;
+          ui.bpIn.value = 67.5;
+        }
       } else if (preset === "noviolation") {
-        ui.aIn.value  = 0;
-        ui.apIn.value = 90;
-        ui.bIn.value  = 45;
-        ui.bpIn.value = 135;
+        if (k === 1) {
+          ui.aIn.value  = 0;
+          ui.apIn.value = 90;
+          ui.bIn.value  = 0;
+          ui.bpIn.value = 90;
+        } else {
+          ui.aIn.value  = 0;
+          ui.apIn.value = 45;
+          ui.bIn.value  = 0;
+          ui.bpIn.value = 45;
+        }
       }
     }
 
-    function startChsh() {
-      cfgSamples = getCfgSamples();
+    function updateChshDisplay() {
+      const r = chsh.results;
+      const fmt = (v) => (v === null || v === undefined) ? "—" : v.toFixed(3);
+      ui.chshTable.innerHTML =
+        `E(a,b)=${fmt(r.Eab)} &nbsp; E(a,b′)=${fmt(r.Eabp)}<br>` +
+        `E(a′,b)=${fmt(r.Eapb)} &nbsp; E(a′,b′)=${fmt(r.Eapbp)}`;
 
+      ui.sVal.textContent = (r.Sab === null || r.Sab === undefined) ? "—" : r.Sab.toFixed(3);
+    }
+
+    function finalizeChshIfReady() {
+      const r = chsh.results;
+      if ([r.Eab, r.Eabp, r.Eapb, r.Eapbp].some(v => v === null || v === undefined)) return;
+
+      const S = Math.abs(r.Eab - r.Eabp + r.Eapb + r.Eapbp);
+      r.Sab = S;
+
+      const sigs = [r.sEab, r.sEabp, r.sEapb, r.sEapbp].map(x => x ?? 0);
+      const sigmaS = Math.sqrt(sigs.reduce((acc, s) => acc + s*s, 0));
+
+      ui.sVal.textContent = S.toFixed(3);
+      ui.sSub.textContent = `σ≈${sigmaS.toFixed(3)} (N=${cfgSamples} each)`;
+      updateChshDisplay();
+    }
+
+    function startChsh() {
+      cfgSamples = getCfgSamples(); // lock for run
       const a  = parseFloat(ui.aIn.value)  || 0;
       const ap = parseFloat(ui.apIn.value) || 45;
       const b  = parseFloat(ui.bIn.value)  || 22.5;
       const bp = parseFloat(ui.bpIn.value) || 67.5;
 
       clearMeasurementBlock();
+
       binStats.clear();
       coincidencePairs = 0;
+      emittedPairs = 0;
       updateTopStats();
 
       chsh.running = true;
       chsh.idx = 0;
       chsh.seq = [
-        { name: "Eab",   a,    b,   label: "(a,b)"   },
-        { name: "Eabp",  a,    b:bp,label: "(a,b′)"  },
-        { name: "Eapb",  a:ap, b,   label: "(a′,b)"  },
-        { name: "Eapbp", a:ap, b:bp,label: "(a′,b′)" },
+        { name: "Eab",   a,    b,     label: "(a,b)"   },
+        { name: "Eabp",  a,    b: bp, label: "(a,b′)"  },
+        { name: "Eapb",  a: ap, b,    label: "(a′,b)"  },
+        { name: "Eapbp", a: ap, b: bp,label: "(a′,b′)" },
       ];
-      chsh.accumulator = { npp:0, npm:0, nmp:0, nmm:0, n:0, sum:0 };
 
+      chsh.accumulator = { npp:0, npm:0, nmp:0, nmm:0, n:0, sum:0 };
       chsh.results = { Eab:null, Eabp:null, Eapb:null, Eapbp:null, Sab:null };
       ui.sVal.textContent = "—";
       ui.sSub.textContent = "σ≈—";
@@ -1381,9 +1474,8 @@
       setOverlay(true, "CHSH RUN 1/4...");
       toggleControls(false);
 
-      const s0 = chsh.seq[0];
-      ui.slA.value = s0.a;
-      ui.slB.value = s0.b;
+      ui.slA.value = chsh.seq[0].a;
+      ui.slB.value = chsh.seq[0].b;
 
       drawGraph();
     }
@@ -1391,8 +1483,8 @@
     function stopChsh() {
       chsh.running = false;
       chsh.accumulator = null;
-      abortSpawnPhoton();
 
+      abortSpawnPhoton();
       setOverlay(false);
       toggleControls(true);
 
@@ -1418,13 +1510,13 @@
         if (current.name === "Eapb")  chsh.results.sEapb  = sigma;
         if (current.name === "Eapbp") chsh.results.sEapbp = sigma;
 
-        if (chsh.idx === 0) { ui.rowEab.classList.add('bar-done');   ui.txtEab.textContent   = `${cfgSamples}/${cfgSamples}  E=${E.toFixed(3)}`; setBar(ui.barEab, 100); }
-        if (chsh.idx === 1) { ui.rowEabp.classList.add('bar-done');  ui.txtEabp.textContent  = `${cfgSamples}/${cfgSamples}  E=${E.toFixed(3)}`; setBar(ui.barEabp, 100); }
-        if (chsh.idx === 2) { ui.rowEapb.classList.add('bar-done');  ui.txtEapb.textContent  = `${cfgSamples}/${cfgSamples}  E=${E.toFixed(3)}`; setBar(ui.barEapb, 100); }
+        if (chsh.idx === 0) { ui.rowEab.classList.add('bar-done'); ui.txtEab.textContent = `${cfgSamples}/${cfgSamples}  E=${E.toFixed(3)}`; setBar(ui.barEab, 100); }
+        if (chsh.idx === 1) { ui.rowEabp.classList.add('bar-done'); ui.txtEabp.textContent = `${cfgSamples}/${cfgSamples}  E=${E.toFixed(3)}`; setBar(ui.barEabp, 100); }
+        if (chsh.idx === 2) { ui.rowEapb.classList.add('bar-done'); ui.txtEapb.textContent = `${cfgSamples}/${cfgSamples}  E=${E.toFixed(3)}`; setBar(ui.barEapb, 100); }
         if (chsh.idx === 3) { ui.rowEapbp.classList.add('bar-done'); ui.txtEapbp.textContent = `${cfgSamples}/${cfgSamples}  E=${E.toFixed(3)}`; setBar(ui.barEapbp, 100); }
 
         const d = foldDelta180(current.a - current.b);
-        sweepPoints.push({ x: deltaBinKey(d), E, sigma, n: cfgSamples });
+        sweepPoints.push({ x: deltaBinKey(d), E, sigma, n: chsh.accumulator.n });
 
         updateChshDisplay();
 
@@ -1453,22 +1545,40 @@
       bob.fields.visible = ui.fMode.checked;
     });
 
-    ui.camLock.addEventListener('change', () => { controls.enabled = !ui.camLock.checked; });
+    ui.camLock.addEventListener('change', () => {
+      controls.enabled = !ui.camLock.checked;
+    });
 
+    // UPDATED: also reapply CHSH preset when experiment changes (unless custom)
     ui.experiment.addEventListener('change', () => {
+      const exp = ui.experiment.value;
       document.getElementById('legendQuantum').textContent =
-        (ui.experiment.value === 'photon') ? "Quantum theory (−cos 2Δ)" : "Quantum theory (−cos Δ)";
+        (exp === 'photon') ? "Quantum theory (−cos 2Δ)" : "Quantum theory (−cos Δ)";
+
+      if (ui.chshPreset.value !== "custom") applyChshPreset();
+
       updateCountsPanelForCurrentDelta();
       drawGraph();
     });
 
-    ui.qMode.addEventListener('change', () => { ui.modeBanner.textContent = ui.qMode.checked ? "Quantum mode" : "Local HV mode"; });
+    ui.qMode.addEventListener('change', () => {
+      ui.modeBanner.textContent = ui.qMode.checked ? "Quantum mode" : "Local HV mode";
+    });
 
-    ui.localModel.addEventListener('change', () => { updateCountsPanelForCurrentDelta(); drawGraph(); });
+    ui.localModel.addEventListener('change', () => {
+      updateCountsPanelForCurrentDelta();
+      drawGraph();
+    });
 
-    ui.binIn.addEventListener('change', () => { resetData(true); });
+    ui.binIn.addEventListener('change', () => resetData(true));
 
-    ui.chshPreset.addEventListener('change', () => { if (ui.chshPreset.value !== "custom") applyChshPreset(); });
+    ui.chshPreset.addEventListener('change', () => {
+      if (ui.chshPreset.value !== "custom") applyChshPreset();
+    });
+
+    ui.sampIn.addEventListener('change', () => {
+      if (!chsh.running && !isSweeping) resetChshBars();
+    });
 
     const btnFire  = document.getElementById('fireBtn');
     const btnSweep = document.getElementById('sweepBtn');
@@ -1482,7 +1592,7 @@
     btnFire.addEventListener('pointercancel', () => isFiring = false);
 
     btnSweep.addEventListener('click', () => startSweep());
-    btnChsh.addEventListener('click', () => startChsh());
+    btnChsh.addEventListener('click',  () => startChsh());
 
     btnView.addEventListener('click', () => {
       camera.position.copy(DEFAULT_CAM_POS);
@@ -1522,16 +1632,20 @@
         ui.slB.value = 45;
       }
 
-      resetChshBars(); // keeps the labels sane after a reset
+      resetChshBars();
       updateTopStats();
       updateCountsPanelForCurrentDelta();
       drawGraph();
     }
 
+    // ---------------------------
+    // Window resize
+    // ---------------------------
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
+
       resizeGraphCanvas();
       drawGraph();
     });
@@ -1551,8 +1665,8 @@
 
       updateSpawnAnimation(dt);
       updatePhysics(dt);
-      updateCountsPanelForCurrentDelta();
 
+      updateCountsPanelForCurrentDelta();
       renderer.render(scene, camera);
     }
 
@@ -1562,12 +1676,15 @@
     ui.modeBanner.textContent = ui.qMode.checked ? "Quantum mode" : "Local HV mode";
     applyChshPreset();
 
-    resizeGraphCanvas();
-    updateTopStats();
-    updateCountsPanelForCurrentDelta();
-    resetChshBars();
-    drawGraph();
-    animate();
+    // Delay init by one frame so HUD has final layout size (helps canvas sizing)
+    requestAnimationFrame(() => {
+      resizeGraphCanvas();
+      resetChshBars();
+      updateTopStats();
+      updateCountsPanelForCurrentDelta();
+      drawGraph();
+      animate();
+    });
   </script>
 </body>
 </html>
