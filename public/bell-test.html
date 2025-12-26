@@ -1226,6 +1226,13 @@
         updateChshBarsLive(); // <- ensures bars move as soon as coincidences are recorded
       }
 
+      // Sweep accumulation
+      if (isSweeping && sweepBatch) {
+        sweepBatch.sum += prod;
+        sweepBatch.n++;
+      }
+
+      if (chsh.running) updateChshBarsLive();
       updateTopStats();
       updateCountsPanelForCurrentDelta();
       drawGraph();
