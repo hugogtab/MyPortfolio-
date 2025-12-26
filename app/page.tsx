@@ -183,11 +183,20 @@ export default function Home() {
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.1, rootMargin: '50px' }
     );
 
+    // Initial check for cards already in viewport
     const cards = document.querySelectorAll('.animate-card');
-    cards.forEach((card) => observer.observe(card));
+    cards.forEach((card) => {
+      observer.observe(card);
+      // Immediately mark visible cards
+      const rect = card.getBoundingClientRect();
+      if (rect.top < window.innerHeight && rect.bottom > 0) {
+        const index = parseInt(card.getAttribute('data-index') || '0');
+        setVisibleCards((prev) => new Set(prev).add(index));
+      }
+    });
 
     return () => observer.disconnect();
   }, []);

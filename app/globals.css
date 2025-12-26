@@ -28,8 +28,16 @@ body {
 }
 
 .fade-in {
-  opacity: 0;
   animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-card {
+  opacity: 1;
+  transition: opacity 0.3s ease-out;
+}
+
+.animate-card:not(.fade-in) {
+  opacity: 0;
 }
 
 .fade-in-delay-1 {
