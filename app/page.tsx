@@ -144,6 +144,7 @@ const visualizations = [
 export default function Home() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [activeSection, setActiveSection] = useState("about");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDarkMode);
@@ -155,6 +156,7 @@ export default function Home() {
 
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);
+    setMobileMenuOpen(false); // Close mobile menu when navigating
     const element = document.getElementById(sectionId);
     if (element) {
       const offset = 80;
@@ -167,6 +169,15 @@ export default function Home() {
     }
   };
 
+  const menuItems = [
+    { id: "about", label: "About" },
+    { id: "physics", label: "Physics" },
+    { id: "ai", label: "AI" },
+    { id: "fem", label: "FEM" },
+    { id: "visualizations", label: "Visualizations" },
+    { id: "contact", label: "Contact" }
+  ];
+
   return (
     <>
       {/* Sticky Navigation */}
@@ -174,15 +185,10 @@ export default function Home() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-8">
             <h1 className="text-xl font-bold text-teal-400">Research Portfolio</h1>
+
+            {/* Desktop Navigation */}
             <div className="hidden items-center gap-6 md:flex">
-              {[
-                { id: "about", label: "About" },
-                { id: "physics", label: "Physics" },
-                { id: "ai", label: "AI" },
-                { id: "fem", label: "FEM" },
-                { id: "visualizations", label: "Visualizations" },
-                { id: "contact", label: "Contact" }
-              ].map((item) => (
+              {menuItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => scrollToSection(item.id)}
@@ -197,14 +203,72 @@ export default function Home() {
               ))}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="rounded-full border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-xs font-semibold text-teal-300 transition hover:border-teal-500/50 hover:bg-teal-500/20"
-          >
-            {isDarkMode ? "☀ Light" : "🌙 Dark"}
-          </button>
+
+          <div className="flex items-center gap-3">
+            {/* Theme Toggle */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="rounded-full border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-xs font-semibold text-teal-300 transition hover:border-teal-500/50 hover:bg-teal-500/20"
+            >
+              {isDarkMode ? "☀ Light" : "🌙 Dark"}
+            </button>
+
+            {/* Hamburger Menu Button (Mobile) */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="flex flex-col gap-1.5 rounded-lg border border-teal-500/30 bg-teal-500/10 p-2 md:hidden"
+              aria-label="Toggle menu"
+            >
+              <span
+                className={`h-0.5 w-6 bg-teal-300 transition-all ${
+                  mobileMenuOpen ? "translate-y-2 rotate-45" : ""
+                }`}
+              />
+              <span
+                className={`h-0.5 w-6 bg-teal-300 transition-all ${
+                  mobileMenuOpen ? "opacity-0" : ""
+                }`}
+              />
+              <span
+                className={`h-0.5 w-6 bg-teal-300 transition-all ${
+                  mobileMenuOpen ? "-translate-y-2 -rotate-45" : ""
+                }`}
+              />
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Menu Overlay */}
+        {mobileMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 top-[73px] bg-slate-950/80 backdrop-blur-sm md:hidden"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+
+            {/* Menu Panel */}
+            <div className="fixed right-0 top-[73px] h-[calc(100vh-73px)] w-64 border-l border-teal-500/20 bg-slate-900 md:hidden">
+              <div className="flex flex-col gap-2 p-6">
+                {menuItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
+                    className={`rounded-lg px-4 py-3 text-left text-base font-medium transition ${
+                      activeSection === item.id
+                        ? "bg-teal-500/20 text-teal-400"
+                        : "text-slate-300 hover:bg-teal-500/10 hover:text-teal-300"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </nav>
 
       <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-20 px-6 pb-20 pt-24">
