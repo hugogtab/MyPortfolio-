@@ -1,82 +1,97 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-const focusAreas = [
-  {
-    title: "AI & Model Architecture",
-    description:
-      "Placeholder for your work on intelligent systems, model design, and interpretability."
-  },
-  {
-    title: "FEM & PFD Simulation",
-    description:
-      "Placeholder for finite element workflows, solver design, and simulation validation."
-  },
-  {
-    title: "Physics & Quantum Systems",
-    description:
-      "Interactive quantum mechanics experiments, Bell test simulations, and computational physics visualizations."
-  }
-];
-
-const projectFilters = [
-  "All",
-  "AI",
-  "Physics",
-  "FEM",
-  "PFD Simulation",
-  "Quantum"
-];
-
-const projects = [
-  {
-    title: "Bell Test: Interactive Quantum Lab",
-    tag: "Quantum",
-    topics: ["Physics", "Quantum"],
-    description:
-      "3D visualization of quantum entanglement with Bell inequality tests, CHSH violations, and local hidden-variable models.",
-    link: "/bell-test"
-  },
-  {
-    title: "Project Placeholder: AI Architecture Study",
-    tag: "AI",
-    topics: ["AI"],
-    description:
-      "Swap in your project summary, model approach, and measurable impact."
-  },
-  {
-    title: "Project Placeholder: FEM Solver Prototype",
-    tag: "FEM",
-    topics: ["FEM", "PFD Simulation"],
-    description:
-      "Add details about the mesh strategy, solver performance, or validation results."
-  }
-];
+// Example ideas to explore for each discipline
+const disciplineIdeas = {
+  physics: [
+    {
+      title: "Stern-Gerlach Experiment",
+      description: "Explore spin quantization and the measurement problem through sequential SG apparatus",
+      tags: ["Quantum Mechanics", "Spin"]
+    },
+    {
+      title: "Bell's Theorem & CHSH",
+      description: "Interactive demonstration of quantum entanglement and local realism violations",
+      tags: ["Entanglement", "Non-locality"]
+    },
+    {
+      title: "Double-Slit Interference",
+      description: "Wave-particle duality visualization with single photon detection patterns",
+      tags: ["Wave Mechanics", "QM Foundations"]
+    },
+    {
+      title: "Quantum Harmonic Oscillator",
+      description: "Energy eigenstates, creation/annihilation operators, and Fock space",
+      tags: ["QM States", "Operators"]
+    }
+  ],
+  ai: [
+    {
+      title: "Attention is All You Need",
+      description: "Transformer architecture breakdown: self-attention, multi-head attention, and positional encoding",
+      tags: ["Transformers", "NLP"]
+    },
+    {
+      title: "ResNet Architecture",
+      description: "Skip connections, gradient flow, and deep residual learning for image recognition",
+      tags: ["Computer Vision", "CNNs"]
+    },
+    {
+      title: "Diffusion Models",
+      description: "Score-based generative models and denoising diffusion probabilistic models (DDPM)",
+      tags: ["Generative AI", "Sampling"]
+    },
+    {
+      title: "RL Policy Gradients",
+      description: "REINFORCE, A3C, and PPO for policy optimization in continuous action spaces",
+      tags: ["Reinforcement Learning", "Optimization"]
+    }
+  ],
+  fem: [
+    {
+      title: "Adaptive Mesh Refinement",
+      description: "Error estimators and h-adaptive refinement strategies for optimal mesh density",
+      tags: ["FEM", "Mesh Generation"]
+    },
+    {
+      title: "Navier-Stokes CFD",
+      description: "Incompressible flow solver with SIMPLE algorithm and turbulence modeling",
+      tags: ["CFD", "Fluid Dynamics"]
+    },
+    {
+      title: "Stress-Strain Analysis",
+      description: "Linear elasticity, von Mises stress, and material failure prediction",
+      tags: ["Structural Analysis", "Mechanics"]
+    },
+    {
+      title: "Iterative Solver Methods",
+      description: "Conjugate gradient, GMRES, and multigrid methods for large sparse systems",
+      tags: ["Numerical Methods", "Linear Algebra"]
+    }
+  ]
+};
 
 const visualizations = [
   // Physics & Quantum
   {
     title: "Bell Test: Ultimate Lab",
     label: "Interactive Quantum Experiment",
-    description:
-      "Explore quantum entanglement, Bell inequalities, and the CHSH test in an immersive 3D environment.",
+    description: "Explore quantum entanglement, Bell inequalities, and the CHSH test in an immersive 3D environment.",
     link: "/bell-test.html",
     category: "Physics"
   },
   {
     title: "Quantum Simulation",
     label: "Quantum Mechanics",
-    description:
-      "Interactive quantum mechanics simulation exploring wave functions, superposition, and state evolution.",
+    description: "Interactive quantum mechanics simulation exploring wave functions, superposition, and state evolution.",
     link: "/quantum-simulation.html",
     category: "Physics"
   },
   {
     title: "Physics Visualization",
     label: "Classical & Modern Physics",
-    description:
-      "Visualize mechanics, electromagnetism, relativity, and other fundamental physics phenomena.",
+    description: "Visualize mechanics, electromagnetism, relativity, and other fundamental physics phenomena.",
     link: "/physics-visualization.html",
     category: "Physics"
   },
@@ -84,24 +99,21 @@ const visualizations = [
   {
     title: "AI Architecture Viz",
     label: "Model Architecture",
-    description:
-      "Interactive visualization of AI model architecture, attention mechanisms, and neural network structures.",
+    description: "Interactive visualization of AI model architecture, attention mechanisms, and neural network structures.",
     link: "/ai-architecture-viz.html",
     category: "AI"
   },
   {
     title: "AI Model Explorer",
     label: "Model Inspection",
-    description:
-      "Explore model parameters, layer structures, and training dynamics in real-time.",
+    description: "Explore model parameters, layer structures, and training dynamics in real-time.",
     link: "/ai-model-explorer.html",
     category: "AI"
   },
   {
     title: "Training Dynamics",
     label: "Optimization Visualization",
-    description:
-      "Real-time visualization of training metrics, loss curves, and optimization landscapes.",
+    description: "Real-time visualization of training metrics, loss curves, and optimization landscapes.",
     link: "/ai-training-dynamics.html",
     category: "AI"
   },
@@ -109,86 +121,29 @@ const visualizations = [
   {
     title: "FEM Mesh Viewer",
     label: "Finite Element Analysis",
-    description:
-      "Interactive mesh visualization with element inspection, refinement zones, and quality metrics.",
+    description: "Interactive mesh visualization with element inspection, refinement zones, and quality metrics.",
     link: "/fem-mesh-viewer.html",
     category: "FEM"
   },
   {
     title: "PFD Simulation",
     label: "Fluid Dynamics",
-    description:
-      "Computational fluid dynamics with flow fields, pressure distributions, and velocity vectors.",
+    description: "Computational fluid dynamics with flow fields, pressure distributions, and velocity vectors.",
     link: "/pfd-simulation.html",
     category: "FEM"
   },
   {
     title: "Solver Convergence",
     label: "Iterative Solvers",
-    description:
-      "Real-time visualization of solver convergence, residual plots, and solution progress.",
+    description: "Real-time visualization of solver convergence, residual plots, and solution progress.",
     link: "/solver-convergence.html",
     category: "FEM"
   }
 ];
 
-const researchTracks = [
-  {
-    title: "AI Systems Track",
-    focus: "Model architecture, interpretability, and applied ML workflows.",
-    highlights: [
-      "Add a short research thesis or guiding question.",
-      "Link to a key note or paper summary."
-    ]
-  },
-  {
-    title: "Simulation Track",
-    focus: "FEM + PFD pipelines, solver optimization, and validation studies.",
-    highlights: [
-      "Summarize a solver experiment or mesh study.",
-      "Add a validation result or performance metric."
-    ]
-  },
-  {
-    title: "Physics Track",
-    focus: "Quantum, relativity, and computational physics explorations.",
-    highlights: [
-      "Capture a learning milestone or experiment.",
-      "Reference a visualization or derivation."
-    ]
-  }
-];
-
-const metrics = [
-  { label: "Models prototyped", value: "12+" },
-  { label: "Simulation runs", value: "40+" },
-  { label: "Research notes", value: "25+" }
-];
-
-const currentWork = [
-  "Exploring retrieval-augmented architectures for hybrid reasoning.",
-  "Validating mesh refinement strategies for coupled FEM + PFD systems.",
-  "Drafting a short primer on relativistic geodesics."
-];
-
-const notes = [
-  "Note Placeholder — summarize a learning topic or paper.",
-  "Note Placeholder — add a short description of an experiment.",
-  "Note Placeholder — include a quick link or key takeaway.",
-  "Note Placeholder — highlight a concept you are exploring."
-];
-
 export default function Home() {
-  const [activeFilter, setActiveFilter] = useState("All");
   const [isDarkMode, setIsDarkMode] = useState(true);
-
-  const filteredProjects = useMemo(() => {
-    if (activeFilter === "All") {
-      return projects;
-    }
-
-    return projects.filter((project) => project.topics.includes(activeFilter));
-  }, [activeFilter]);
+  const [activeSection, setActiveSection] = useState("about");
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDarkMode);
@@ -198,317 +153,320 @@ export default function Home() {
     setIsDarkMode((previous) => !previous);
   };
 
+  const scrollToSection = (sectionId: string) => {
+    setActiveSection(sectionId);
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const offset = 80;
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+    }
+  };
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-20 px-6 pb-20 pt-16">
-      <header className="flex flex-col gap-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs uppercase tracking-[0.3em] text-slate-500 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white/70">
-            Research + Engineering Portfolio
+    <>
+      {/* Sticky Navigation */}
+      <nav className="fixed top-0 z-50 w-full border-b border-teal-500/20 bg-slate-900/95 backdrop-blur-md dark:bg-slate-950/95">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-8">
+            <h1 className="text-xl font-bold text-teal-400">Research Portfolio</h1>
+            <div className="hidden items-center gap-6 md:flex">
+              {[
+                { id: "about", label: "About" },
+                { id: "physics", label: "Physics" },
+                { id: "ai", label: "AI" },
+                { id: "fem", label: "FEM" },
+                { id: "visualizations", label: "Visualizations" },
+                { id: "contact", label: "Contact" }
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id)}
+                  className={`text-sm font-medium transition ${
+                    activeSection === item.id
+                      ? "text-teal-400"
+                      : "text-slate-300 hover:text-teal-300"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
           <button
             type="button"
             onClick={toggleTheme}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 dark:border-white/10 dark:bg-white/5 dark:text-white/70"
+            className="rounded-full border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-xs font-semibold text-teal-300 transition hover:border-teal-500/50 hover:bg-teal-500/20"
           >
-            {isDarkMode ? "Switch to Light" : "Switch to Dark"}
+            {isDarkMode ? "☀ Light" : "🌙 Dark"}
           </button>
         </div>
-        <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr]">
-          <div className="flex flex-col gap-6">
-            <h1 className="text-4xl font-semibold leading-tight text-slate-900 md:text-6xl dark:text-white">
-              Placeholder headline for your core mission, research, or portfolio
-              focus.
-            </h1>
-            <p className="max-w-2xl text-lg text-slate-600 dark:text-slate-300">
-              Use this space to explain your focus areas, the problems you
-              solve, and the types of projects you publish.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <button className="rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-glow transition hover:-translate-y-0.5 dark:bg-white dark:text-midnight">
-                Primary CTA Placeholder
-              </button>
-              <button className="rounded-full border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-400 dark:border-white/20 dark:text-white/80 dark:hover:border-white/50">
-                Secondary CTA Placeholder
-              </button>
+      </nav>
+
+      <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-20 px-6 pb-20 pt-24">
+        {/* Hero Section */}
+        <section id="about" className="flex flex-col gap-8 pt-8">
+          <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr]">
+            <div className="flex flex-col gap-6">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-xs uppercase tracking-[0.3em] text-teal-300">
+                Research + Engineering Portfolio
+              </div>
+              <h1 className="text-4xl font-bold leading-tight text-slate-900 md:text-6xl dark:text-white">
+                Exploring Quantum Mechanics, AI Architecture & Simulation
+              </h1>
+              <p className="max-w-2xl text-lg text-slate-600 dark:text-slate-300">
+                Deep dives into quantum phenomena, modern AI systems, and computational simulation.
+                Building interactive visualizations and experiments to understand complex systems.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <button
+                  onClick={() => scrollToSection("visualizations")}
+                  className="rounded-full bg-gradient-to-r from-teal-600 to-cyan-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-teal-500/50"
+                >
+                  Explore Visualizations
+                </button>
+                <button
+                  onClick={() => scrollToSection("contact")}
+                  className="rounded-full border border-teal-500/30 bg-teal-500/10 px-6 py-3 text-sm font-semibold text-teal-300 transition hover:border-teal-500/50 hover:bg-teal-500/20"
+                >
+                  Get in Touch
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
-            <h2 className="text-sm uppercase tracking-[0.3em] text-slate-400 dark:text-white/60">
-              Current Focus
-            </h2>
-            <ul className="mt-6 space-y-5">
-              {focusAreas.map((area) => (
-                <li key={area.title} className="space-y-2">
+            <div className="rounded-3xl border border-teal-500/20 bg-gradient-to-br from-teal-500/10 to-cyan-500/10 p-6 backdrop-blur">
+              <h2 className="text-sm uppercase tracking-[0.3em] text-teal-300">
+                Current Focus
+              </h2>
+              <ul className="mt-6 space-y-5">
+                <li className="space-y-2">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    {area.title}
+                    Physics & Quantum Systems
                   </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-300">
-                    {area.description}
+                    Quantum mechanics experiments, Bell tests, and computational physics visualizations
                   </p>
                 </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </header>
-
-      <section className="rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
-        <div className="grid gap-6 md:grid-cols-[1.1fr_0.9fr] md:items-center">
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-white/60">
-              Flagship Case Study
-            </p>
-            <h2 className="mt-4 text-3xl font-semibold text-slate-900 dark:text-white">
-              Project Placeholder: Intelligent Simulation Stack
-            </h2>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              Highlight your most defining project with the problem statement,
-              core approach, and why it mattered.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-white/60">
-              <span className="rounded-full border border-slate-200 px-3 py-1 dark:border-white/10">
-                AI + Physics
-              </span>
-              <span className="rounded-full border border-slate-200 px-3 py-1 dark:border-white/10">
-                Simulation
-              </span>
-              <span className="rounded-full border border-slate-200 px-3 py-1 dark:border-white/10">
-                Research
-              </span>
-            </div>
-            <div className="mt-6 flex items-center gap-3 text-sm">
-              <span className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold uppercase text-white dark:bg-white dark:text-midnight">
-                Impact Placeholder
-              </span>
-              <span className="text-slate-500 dark:text-white/60">
-                e.g., 35% faster convergence or 2x experiment throughput
-              </span>
+                <li className="space-y-2">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    AI & Model Architecture
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    Transformer models, attention mechanisms, and modern AI system design
+                  </p>
+                </li>
+                <li className="space-y-2">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    FEM & Simulation
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    Finite element analysis, CFD pipelines, and numerical solver optimization
+                  </p>
+                </li>
+              </ul>
             </div>
           </div>
-          <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-100/80 p-8 text-center text-xs text-slate-500 dark:border-white/20 dark:bg-white/5 dark:text-white/60">
-            Diagram / visualization placeholder
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="flex flex-wrap items-center justify-between gap-6 rounded-3xl border border-slate-200 bg-white/80 px-6 py-5 shadow-sm dark:border-white/10 dark:bg-white/5">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-white/60">
-            Currently exploring
-          </p>
-          <ul className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            {currentWork.map((item) => (
-              <li key={item} className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 dark:bg-nebula" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="flex flex-wrap gap-4">
-          {metrics.map((metric) => (
-            <div
-              key={metric.label}
-              className="rounded-2xl border border-slate-200 bg-white/80 px-5 py-4 text-center text-sm shadow-sm dark:border-white/10 dark:bg-white/5"
-            >
-              <p className="text-xl font-semibold text-slate-900 dark:text-white">
-                {metric.value}
+        {/* Physics Section */}
+        <section id="physics" className="grid gap-6">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-teal-400">
+                Quantum & Classical
               </p>
-              <p className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-white/60">
-                {metric.label}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="grid gap-6">
-        <div className="flex items-end justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-white/60">
-              Selected Work
-            </p>
-            <h2 className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">
-              Featured Work
-            </h2>
-          </div>
-          <span className="text-sm text-slate-500 dark:text-white/50">
-            Add your featured work
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          {projectFilters.map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => setActiveFilter(filter)}
-              className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${
-                activeFilter === filter
-                  ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-midnight"
-                  : "border-slate-300 text-slate-500 hover:border-slate-400 dark:border-white/20 dark:text-white/60 dark:hover:border-white/50"
-              }`}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
-        <div className="grid gap-6 md:grid-cols-3">
-          {filteredProjects.map((item) => (
-            <article
-              key={item.title}
-              className="group rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm transition hover:-translate-y-1 hover:border-slate-300 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/30"
-            >
-              <div className="text-xs uppercase tracking-[0.3em] text-cyan-600 dark:text-aurora">
-                {item.tag}
-              </div>
-              <h3 className="mt-4 text-xl font-semibold text-slate-900 dark:text-white">
-                {item.title}
-              </h3>
+              <h2 className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
+                Physics & Quantum Mechanics
+              </h2>
               <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-                {item.description}
+                Interactive experiments exploring quantum phenomena, from basic principles to advanced topics
               </p>
-              {item.link ? (
-                <a
-                  href={item.link}
-                  className="mt-6 inline-block text-sm font-semibold text-cyan-600 dark:text-aurora"
-                >
-                  Explore Lab →
-                </a>
-              ) : (
-                <button className="mt-6 text-sm font-semibold text-cyan-600 dark:text-aurora">
-                  Link placeholder →
-                </button>
-              )}
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="grid gap-6">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-white/60">
-            Visual Evidence
-          </p>
-          <h2 className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">
-            Visualizations + Diagrams
-          </h2>
-          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            Use these placeholders for physics simulations, AI architecture
-            diagrams, and solver outputs.
-          </p>
-        </div>
-        <div className="grid gap-6 md:grid-cols-3">
-        {visualizations.map((viz) => (
-          <article
-            key={viz.title}
-            className="group rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm transition hover:-translate-y-1 hover:border-slate-300 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/30"
-          >
-            <div className="text-xs uppercase tracking-[0.3em] text-indigo-500 dark:text-nebula">
-              {viz.label}
             </div>
-            <h3 className="mt-4 text-xl font-semibold text-slate-900 dark:text-white">
-              {viz.title}
-            </h3>
-            <div className="mt-4 flex h-32 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-100/80 text-xs text-slate-500 dark:border-white/20 dark:bg-white/5 dark:text-white/60">
-              {viz.link ? "Interactive Experiment →" : "Visualization placeholder"}
-            </div>
-            <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-              {viz.description}
-            </p>
-            {viz.link && (
-              <a
-                href={viz.link}
-                className="mt-6 inline-block rounded-full bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 dark:bg-nebula dark:hover:bg-indigo-500"
-              >
-                Launch Experiment
-              </a>
-            )}
-          </article>
-        ))}
-        </div>
-      </section>
-
-      <section className="grid gap-8 md:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-6 rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-white/70 to-transparent p-8 shadow-sm dark:border-white/10 dark:from-white/10 dark:via-white/5">
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-white/60">
-              Tracks
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
-              Research Tracks
-            </h2>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              Organize your work into focused tracks with key notes, questions,
-              and experiments.
-            </p>
           </div>
-          <div className="grid gap-4">
-            {researchTracks.map((track) => (
-              <div
-                key={track.title}
-                className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm dark:border-white/10 dark:bg-white/5"
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {disciplineIdeas.physics.map((idea) => (
+              <article
+                key={idea.title}
+                className="group rounded-3xl border border-teal-500/20 bg-gradient-to-br from-teal-500/5 to-cyan-500/5 p-6 shadow-sm transition hover:-translate-y-1 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/10"
               >
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                  {track.title}
+                <div className="mb-3 inline-block rounded-full bg-teal-500/20 px-3 py-1 text-xs font-semibold text-teal-300">
+                  Idea to Explore
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  {idea.title}
                 </h3>
                 <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                  {track.focus}
+                  {idea.description}
                 </p>
-                <ul className="mt-4 space-y-2 text-xs text-slate-500 dark:text-white/60">
-                  {track.highlights.map((item) => (
-                    <li key={item} className="flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 dark:bg-aurora" />
-                      {item}
-                    </li>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {idea.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-teal-500/30 px-2 py-0.5 text-xs text-teal-400"
+                    >
+                      {tag}
+                    </span>
                   ))}
-                </ul>
-              </div>
+                </div>
+              </article>
             ))}
           </div>
-        </div>
-        <div className="flex flex-col justify-between rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
+        </section>
+
+        {/* AI Section */}
+        <section id="ai" className="grid gap-6">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-cyan-400">
+                Machine Learning & Deep Learning
+              </p>
+              <h2 className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
+                AI & Model Architecture
+              </h2>
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                Exploring modern AI architectures, from transformers to diffusion models
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {disciplineIdeas.ai.map((idea) => (
+              <article
+                key={idea.title}
+                className="group rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 p-6 shadow-sm transition hover:-translate-y-1 hover:border-cyan-500/40 hover:shadow-lg hover:shadow-cyan-500/10"
+              >
+                <div className="mb-3 inline-block rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-semibold text-cyan-300">
+                  Idea to Explore
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  {idea.title}
+                </h3>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  {idea.description}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {idea.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-cyan-500/30 px-2 py-0.5 text-xs text-cyan-400"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* FEM Section */}
+        <section id="fem" className="grid gap-6">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-blue-400">
+                Computational Engineering
+              </p>
+              <h2 className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
+                FEM & Simulation
+              </h2>
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                Finite element methods, CFD, and numerical solver techniques
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {disciplineIdeas.fem.map((idea) => (
+              <article
+                key={idea.title}
+                className="group rounded-3xl border border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/10"
+              >
+                <div className="mb-3 inline-block rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-300">
+                  Idea to Explore
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  {idea.title}
+                </h3>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  {idea.description}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {idea.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-blue-500/30 px-2 py-0.5 text-xs text-blue-400"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* Visualizations Section */}
+        <section id="visualizations" className="grid gap-6">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-white/60">
-              Output
+            <p className="text-xs uppercase tracking-[0.3em] text-teal-400">
+              Interactive Experiments
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
-              Outcomes + Notes
+            <h2 className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
+              Visualizations + Interactive Labs
             </h2>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              Pair publishable work with learning artifacts and experiments.
+              Launch interactive experiments to explore complex phenomena in 3D environments
             </p>
           </div>
-          <ul className="mt-8 space-y-4 text-sm text-slate-700 dark:text-slate-200">
-            {notes.map((note) => (
-              <li
-                key={note}
-                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+          <div className="grid gap-6 md:grid-cols-3">
+            {visualizations.map((viz) => (
+              <article
+                key={viz.title}
+                className="group rounded-3xl border border-teal-500/20 bg-gradient-to-br from-slate-900/50 to-teal-900/20 p-6 shadow-sm transition hover:-translate-y-1 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/20"
               >
-                {note}
-                <span className="text-xs text-slate-400 dark:text-white/50">
-                  In progress
-                </span>
-              </li>
+                <div className="text-xs uppercase tracking-[0.3em] text-cyan-400">
+                  {viz.label}
+                </div>
+                <h3 className="mt-4 text-xl font-bold text-slate-900 dark:text-white">
+                  {viz.title}
+                </h3>
+                <div className="mt-4 flex h-32 items-center justify-center rounded-2xl border border-dashed border-teal-500/30 bg-gradient-to-br from-teal-500/10 to-cyan-500/10 text-xs text-teal-300">
+                  {viz.link ? "🚀 Interactive Experiment →" : "Coming Soon"}
+                </div>
+                <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
+                  {viz.description}
+                </p>
+                {viz.link && (
+                  <a
+                    href={viz.link}
+                    className="mt-6 inline-block w-full rounded-full bg-gradient-to-r from-teal-600 to-cyan-600 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg transition hover:shadow-teal-500/50"
+                  >
+                    Launch Experiment
+                  </a>
+                )}
+              </article>
             ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">
-              Collaboration Placeholder
-            </h2>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-              Add your preferred collaboration types and contact approach.
-            </p>
           </div>
-          <button className="rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white dark:bg-aurora dark:text-midnight">
-            Contact CTA Placeholder
-          </button>
-        </div>
-      </section>
-    </main>
+        </section>
+
+        {/* Contact Section */}
+        <section id="contact" className="rounded-3xl border border-teal-500/20 bg-gradient-to-br from-teal-500/10 to-cyan-500/10 p-8 backdrop-blur">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                Let's Collaborate
+              </h2>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                Interested in quantum mechanics, AI research, or simulation projects? Get in touch.
+              </p>
+            </div>
+            <button className="rounded-full bg-gradient-to-r from-teal-600 to-cyan-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:shadow-teal-500/50">
+              Contact Me
+            </button>
+          </div>
+        </section>
+      </main>
+    </>
   );
 }
