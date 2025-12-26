@@ -1161,6 +1161,12 @@
         acc.n++;
       }
 
+      // Sweep accumulation
+      if (isSweeping && sweepBatch) {
+        sweepBatch.sum += prod;
+        sweepBatch.n++;
+      }
+
       if (chsh.running) updateChshBarsLive();
       updateTopStats();
       updateCountsPanelForCurrentDelta();
